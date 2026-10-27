@@ -37,13 +37,18 @@ The v1 statement is **false as written**: it imposes the moment bound in
 the form of a Bochner-integral inequality, but in Lean the Bochner
 integral of a non-integrable function is `0` by convention, so the bound
 holds vacuously for processes whose increments are not integrable.
-Counterexample: let `(Ω, μ) = ([0, 1], Lebesgue)`, let `A ⊆ [0, 1]` be a
-set whose indicator is not almost-everywhere strongly measurable (e.g. a
-Vitali-type set, which exists by choice), and set `X_t = h(t) · 1_A` with
-`h(0) = 0` and `h(t) = 1` for `t ≠ 0`. For every `s, t`, the increment
-`|X_s - X_t|^β` is either `0` or a non-zero multiple of `1_A`, hence not
-integrable, so its Bochner integral is `0` and the moment bound holds for
-any `α, β, K ≥ 0`. But no Hölder modification exists: for any `γ > 0`, a
+Counterexample (for `β > 0`): let `(Ω, μ) = ([0, 1], Lebesgue)`, let
+`A ⊆ [0, 1]` be a set whose indicator is not almost-everywhere strongly
+measurable (e.g. a Vitali-type set, which exists by choice), and set
+`X_t = h(t) · 1_A` with `h(0) = 0` and `h(t) = 1` for `t ≠ 0`. For
+every `s, t`, since `β > 0`, the function `|X_s - X_t|^β` is either the
+zero function (when `h(s) = h(t)`) or `1_A` (when `h(s) ≠ h(t)`). The
+zero increments are integrable with integral `0`, while the nonzero
+increments are not integrable, so their Bochner integral is `0` by
+convention. Hence the Bochner integral is `0` in both cases and the
+moment bound holds for any `α, K ≥ 0` (with the fixed `β > 0`; at
+`β = 0` the integrand is identically `1`, so this does not apply). But
+no Hölder modification exists: for any `γ > 0`, a
 modification `Y` would have to satisfy `Y_t ω = h(t)` for all dyadic `t`
 simultaneously on a set of `ω ∈ A` of positive outer measure (a countable
 intersection of full-measure sets), and then `|Y_{2^{-m}} ω - Y_0 ω| = 1`
