@@ -16,7 +16,7 @@ public import MathlibExt.RingTheory.DedekindDomain.UnramifiedDiscriminant
 # Tests for unramified above a prime iff the prime does not divide the discriminant ideal
 
 Generic application examples exercising
-`Ideal.isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal` (ATLAS Theorem 12.19,
+`Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal` (ATLAS Theorem 12.19,
 discriminant half), plus the contrapositive form: `𝔭` divides the discriminant
 ideal if and only if some prime above `𝔭` is ramified. These are API/inference
 tests; no new definitions are introduced.
@@ -44,39 +44,39 @@ variable (A K : Type*) (L : Type u) (B : Type*)
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
     (∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) ↔
-    ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)) :=
-  Ideal.isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal A K L B 𝔭
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
+  Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A K L B 𝔭
 
 /-- Generic application of the forward implication. -/
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
-    ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)) :=
-  Ideal.not_dvd_spanNorm_differentIdeal_of_isUnramifiedAt A K L B 𝔭 hall
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
+  Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt A K L B 𝔭 hall
 
 /-- Generic application of the reverse implication. -/
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
-    (hndvd : ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)))
+    (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
     (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
     Algebra.IsUnramifiedAt A 𝔮.asIdeal :=
-  Ideal.isUnramifiedAt_of_not_dvd_spanNorm_differentIdeal A K L B 𝔭 hndvd 𝔮 hlies
+  Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal A K L B 𝔭 hndvd 𝔮 hlies
 
 omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
 include K L in
 /-- Contrapositive form: `𝔭` divides the discriminant ideal if and only if
 some prime above `𝔭` is ramified. -/
-theorem dvd_spanNorm_differentIdeal_iff_exists_ramified
+theorem dvd_discriminantIdeal_iff_exists_ramified
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
-    (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)) ↔
+    (𝔭.asIdeal ∣ discriminantIdeal A B) ↔
       ∃ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal ∧
         ¬ Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
   rw [← not_iff_not]
   push Not
-  exact (Ideal.isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal A K L B 𝔭).symm
+  exact (Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A K L B 𝔭).symm
 
-#print axioms Ideal.isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal
-#print axioms Ideal.not_dvd_spanNorm_differentIdeal_of_isUnramifiedAt
-#print axioms Ideal.isUnramifiedAt_of_not_dvd_spanNorm_differentIdeal
-#print axioms UnramifiedDiscriminantTest.dvd_spanNorm_differentIdeal_iff_exists_ramified
+#print axioms Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal
+#print axioms Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt
+#print axioms Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal
+#print axioms UnramifiedDiscriminantTest.dvd_discriminantIdeal_iff_exists_ramified
 
 end UnramifiedDiscriminantTest

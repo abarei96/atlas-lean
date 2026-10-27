@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
+public import MathlibExt.RingTheory.DedekindDomain.DiscriminantTower
 public import Mathlib.RingTheory.DedekindDomain.Different
 public import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
 public import Mathlib.RingTheory.Ideal.Norm.RelNorm
@@ -28,9 +29,12 @@ let `B` be the integral closure of `A` in `L`. For a nonzero prime `𝔭` of `A`
 the extension is unramified at every prime `𝔮` of `B` lying above `𝔭` if and only
 if `𝔭` does not divide the discriminant ideal of `B / A`.
 
-The discriminant ideal is stated here in `spanNorm` form,
-`Ideal.spanNorm A (differentIdeal A B)`, which is `Ideal.relNorm A`
-(`Ideal.spanNorm_eq`). The different-ideal half of the book's statement,
+The discriminant ideal is `Ideal.discriminantIdeal A B` from
+`MathlibExt.RingTheory.DedekindDomain.DiscriminantTower`, defined as
+`Ideal.spanNorm A (differentIdeal A B)`
+(`Ideal.discriminantIdeal_eq_spanNorm`), hence also `Ideal.relNorm A`
+of the different ideal (`Ideal.spanNorm_eq`); those unfolding lemmas are
+used only inside the proofs below. The different-ideal half of the book's statement,
 `𝔮 ∤ differentIdeal A B ↔ Algebra.IsUnramifiedAt A 𝔮`, is Mathlib's
 `not_dvd_differentIdeal_iff`, used as a lemma, not re-proved.
 
@@ -43,10 +47,10 @@ power statement.
 
 ## Main results
 
-* `Ideal.isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal`: the
+* `Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal`: the
   discriminant-half of Theorem 12.19.
-* `Ideal.isUnramifiedAt_of_not_dvd_spanNorm_differentIdeal` and
-  `Ideal.not_dvd_spanNorm_differentIdeal_of_isUnramifiedAt`: the two
+* `Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal` and
+  `Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt`: the two
   implications separately.
 -/
 
@@ -87,15 +91,15 @@ omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
 include K L in
 /-- If the extension is unramified at every prime above `𝔭`, then `𝔭` does not
 divide the discriminant ideal. -/
-theorem not_dvd_spanNorm_differentIdeal_of_isUnramifiedAt
+theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
-    ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)) := by
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) := by
   have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
     isSeparable_fractionRing A K L B
   have hDne : differentIdeal A B ≠ ⊥ := differentIdeal_ne_bot
-  rw [spanNorm_eq]
+  rw [discriminantIdeal_eq_spanNorm A B, spanNorm_eq]
   intro hdvd
   have hprod : relNorm A (differentIdeal A B) =
       ((UniqueFactorizationMonoid.normalizedFactors (differentIdeal A B)).map
@@ -127,14 +131,14 @@ omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
 include K L in
 /-- If `𝔭` does not divide the discriminant ideal, then the extension is
 unramified at every prime above `𝔭`. -/
-theorem isUnramifiedAt_of_not_dvd_spanNorm_differentIdeal
+theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
-    (hndvd : ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)))
+    (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
     (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
     Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
   have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
     isSeparable_fractionRing A K L B
-  rw [spanNorm_eq] at hndvd
+  rw [discriminantIdeal_eq_spanNorm A B, spanNorm_eq] at hndvd
   rw [← not_dvd_differentIdeal_iff]
   intro hqdvd
   apply hndvd
@@ -161,13 +165,13 @@ omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
 include K L in
 /-- Theorem 12.19, discriminant half: the extension is unramified at every
 prime above `𝔭` if and only if `𝔭` does not divide the discriminant ideal. -/
-theorem isUnramifiedAt_iff_not_dvd_spanNorm_differentIdeal
+theorem isUnramifiedAt_iff_not_dvd_discriminantIdeal
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
     (∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) ↔
-    ¬ (𝔭.asIdeal ∣ spanNorm A (differentIdeal A B)) :=
-  ⟨not_dvd_spanNorm_differentIdeal_of_isUnramifiedAt A K L B 𝔭,
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
+  ⟨not_dvd_discriminantIdeal_of_isUnramifiedAt A K L B 𝔭,
    fun hndvd 𝔮 hlies =>
-     isUnramifiedAt_of_not_dvd_spanNorm_differentIdeal A K L B 𝔭 hndvd 𝔮 hlies⟩
+     isUnramifiedAt_of_not_dvd_discriminantIdeal A K L B 𝔭 hndvd 𝔮 hlies⟩
 
 end Ideal
