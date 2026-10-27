@@ -24,35 +24,39 @@ formalizing the book's corollary (Subsection: Symmetric Polynomials):
 "A symmetric polynomial in the roots of `P` can be written as a polynomial
 in the coefficients of `P`."
 
-More precisely, if `P` is a monic split polynomial of degree `n` with roots
-`α : Fin n → F`, and `f` is a symmetric polynomial in `n` variables, then
-`f` evaluated at the roots equals some polynomial `q` evaluated at the
-signed coefficients `(-1)^(i+1) * P.coeff (n - (i+1))` of `P`, the
-elementary symmetric polynomials in the roots, by Vieta's formulas.
+More precisely, a symmetric polynomial `f` in `n` variables has a single
+expression `q` in the elementary symmetric polynomials, depending only on
+`f`. For every monic split polynomial `P` of degree `n` with roots
+`α : Fin n → F`, that same `q`, evaluated at the signed coefficients
+`(-1)^(i+1) * P.coeff (n - (i+1))` of `P`, equals `f` evaluated at the
+roots, by Vieta's formulas.
 -/
 
 @[expose] public section
 
 namespace Polynomial
 
-/-- A symmetric polynomial evaluated at the roots of a monic split polynomial
-`P` equals some polynomial evaluated at the signed coefficients of `P`.
-This is the book's corollary that a symmetric polynomial in the roots of `P`
-can be written as a polynomial in the coefficients of `P`; the signed
-coefficients are the elementary symmetric polynomials in the roots, by
-Vieta's formulas. -/
+/-- A symmetric polynomial is a polynomial in the elementary symmetric
+polynomials, with a single witness `q` depending only on `f`; consequently,
+for every monic split polynomial `P`, that same `q` evaluated at the signed
+coefficients of `P` equals `f` evaluated at the roots of `P`. This is the
+book's corollary that a symmetric polynomial in the roots of `P` can be
+written as a polynomial in the coefficients of `P`; the signed coefficients
+are the elementary symmetric polynomials in the roots, by Vieta's formulas. -/
 theorem symmetric_polynomial_in_esymm
-    {F : Type*} [Field F] {P : Polynomial F} (hP : P.Monic) (hsplit : P.Splits)
-    (n : ℕ) (hn : P.natDegree = n)
-    (f : MvPolynomial (Fin n) F) (hf : f.IsSymmetric)
-    (α : Fin n → F) (hα : P = ∏ i : Fin n, (Polynomial.X - Polynomial.C (α i))) :
+    {F : Type*} [Field F] {n : ℕ}
+    (f : MvPolynomial (Fin n) F) (hf : f.IsSymmetric) :
     ∃ q : MvPolynomial (Fin n) F,
-      MvPolynomial.eval α f =
-        MvPolynomial.eval
-          (fun i : Fin n => (-1 : F) ^ (i.val + 1) * P.coeff (n - (i.val + 1))) q := by
+      f = MvPolynomial.aeval
+          (fun i : Fin n => MvPolynomial.esymm (Fin n) F (i.val + 1)) q ∧
+        ∀ {P : Polynomial F} {α : Fin n → F}, P.Monic → P.Splits →
+          P.natDegree = n →
+          P = ∏ i : Fin n, (Polynomial.X - Polynomial.C (α i)) →
+          MvPolynomial.eval α f =
+            MvPolynomial.eval
+              (fun i : Fin n => (-1 : F) ^ (i.val + 1) * P.coeff (n - (i.val + 1))) q := by
   have hcard : Fintype.card (Fin n) = n := Fintype.card_fin n
   set q := (MvPolynomial.esymmAlgEquiv (Fin n) F hcard).symm ⟨f, hf⟩
-  refine ⟨q, ?_⟩
   have hfq : f = (MvPolynomial.aeval
       (fun i : Fin n => MvPolynomial.esymm (Fin n) F (i.val + 1))) q := by
     have h1 : ((MvPolynomial.esymmAlgEquiv (Fin n) F hcard) q).val = f := by
@@ -60,6 +64,8 @@ theorem symmetric_polynomial_in_esymm
     rw [← h1]
     change ((MvPolynomial.esymmAlgHom (Fin n) F n) q).val = _
     exact MvPolynomial.esymmAlgHom_apply (σ := Fin n) q
+  refine ⟨q, hfq, ?_⟩
+  intro P α hP hsplit hn hα
   suffices h : ∀ i : Fin n,
       MvPolynomial.eval α (MvPolynomial.esymm (Fin n) F (i.val + 1)) =
         (-1 : F) ^ (i.val + 1) * P.coeff (n - (i.val + 1)) by
