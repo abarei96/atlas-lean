@@ -1,0 +1,97 @@
+/-
+Copyright (c) Meta Platforms, Inc. and affiliates.
+All rights reserved.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-/
+
+module
+
+import MathlibExt.Analysis.FunctionalAnalysis.SchurTest
+
+import Mathlib.Tactic.FinCases
+import Mathlib.Tactic.NormNum
+import Mathlib.Tactic.Positivity
+
+/-!
+# Tests for Schur's test for finite matrices
+
+Concrete checks on `ℂ²`:
+
+* the identity matrix acts as the identity, with operator norm at most `1`;
+* the all-ones matrix has operator norm at most `2`;
+* the zero matrix has operator norm `0`;
+* the diagonal matrix `diag (1, 2)` has operator norm at most `2`.
+-/
+
+namespace MathlibExtTest.Analysis.FunctionalAnalysis.SchurTestTests
+
+open MathlibExt.Analysis.FunctionalAnalysis.SchurTest
+
+/-- Row and column sums of the identity matrix on `Fin 2` are `1`. -/
+private theorem one_row_sum (i : Fin 2) :
+    ∑ j : Fin 2, ‖(1 : Matrix (Fin 2) (Fin 2) ℂ) i j‖ ≤ 1 := by
+  fin_cases i <;> rw [Fin.sum_univ_two] <;> simp [Matrix.one_apply]
+
+/-- Row and column sums of the identity matrix on `Fin 2` are `1`
+(the column form). -/
+private theorem one_col_sum (j : Fin 2) :
+    ∑ i : Fin 2, ‖(1 : Matrix (Fin 2) (Fin 2) ℂ) i j‖ ≤ 1 := by
+  fin_cases j <;> rw [Fin.sum_univ_two] <;> simp [Matrix.one_apply]
+
+/-- Row and column sums of the all-ones matrix on `Fin 2` are `2`. -/
+private theorem allOnes_row_sum (i : Fin 2) :
+    ∑ j : Fin 2, ‖(fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ) i j‖ ≤ 2 := by
+  simp
+
+/-- Row and column sums of the all-ones matrix on `Fin 2` are `2`
+(the column form). -/
+private theorem allOnes_col_sum (j : Fin 2) :
+    ∑ i : Fin 2, ‖(fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ) i j‖ ≤ 2 := by
+  simp
+
+/-- Row sums of `diag (1, 2)` on `Fin 2` are at most `2`. -/
+private theorem diag_row_sum (i : Fin 2) :
+    ∑ j : Fin 2, ‖Matrix.diagonal (![1, 2] : Fin 2 → ℂ) i j‖ ≤ 2 := by
+  fin_cases i <;> rw [Fin.sum_univ_two] <;> simp [Matrix.diagonal]
+
+/-- Column sums of `diag (1, 2)` on `Fin 2` are at most `2`. -/
+private theorem diag_col_sum (j : Fin 2) :
+    ∑ i : Fin 2, ‖Matrix.diagonal (![1, 2] : Fin 2 → ℂ) i j‖ ≤ 2 := by
+  fin_cases j <;> rw [Fin.sum_univ_two] <;> simp [Matrix.diagonal]
+
+/-- The identity matrix acts as the identity through `schurCLM`. -/
+theorem schur_identity_apply (x : EuclideanSpace ℂ (Fin 2)) :
+    schurCLM (1 : Matrix (Fin 2) (Fin 2) ℂ) zero_le_one zero_le_one one_row_sum
+      one_col_sum x = x := by
+  simp [schurCLM_apply]
+
+/-- The operator norm of the identity matrix is at most `1`. -/
+theorem schur_identity_norm_le :
+    ‖schurCLM (1 : Matrix (Fin 2) (Fin 2) ℂ) zero_le_one zero_le_one one_row_sum
+      one_col_sum‖ ≤ 1 :=
+  norm_schurCLM_le_of_le _ zero_le_one one_row_sum one_col_sum
+
+/-- The operator norm of the all-ones matrix on `ℂ²` is at most `2`. -/
+theorem schur_allOnes_norm_le :
+    ‖schurCLM (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ) (by norm_num) (by norm_num)
+      allOnes_row_sum allOnes_col_sum‖ ≤ 2 :=
+  norm_schurCLM_le_of_le _ (by norm_num) allOnes_row_sum allOnes_col_sum
+
+/-- The operator norm of the zero matrix is `0`. -/
+theorem schur_zero_norm :
+    ‖schurCLM (0 : Matrix (Fin 2) (Fin 2) ℂ) le_rfl le_rfl
+      (fun _ => by simp) (fun _ => by simp)‖ = 0 := by
+  have h := norm_schurCLM_le (0 : Matrix (Fin 2) (Fin 2) ℂ) le_rfl le_rfl
+    (fun _ => by simp) (fun _ => by simp)
+  simp at h
+  rw [h, norm_zero]
+
+/-- The operator norm of `diag (1, 2)` on `ℂ²` is at most `2`. -/
+theorem schur_diagonal_norm_le :
+    ‖schurCLM (Matrix.diagonal (![1, 2] : Fin 2 → ℂ)) (by norm_num) (by norm_num)
+      diag_row_sum diag_col_sum‖ ≤ 2 :=
+  norm_schurCLM_le_of_le _ (by norm_num) diag_row_sum diag_col_sum
+
+end MathlibExtTest.Analysis.FunctionalAnalysis.SchurTestTests
