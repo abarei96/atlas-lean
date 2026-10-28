@@ -1,0 +1,99 @@
+/-
+Copyright (c) Meta Platforms, Inc. and affiliates.
+All rights reserved.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-/
+
+module
+
+public import MathlibExt.LinearAlgebra.Matrix.CirculantSpectrum
+
+import Mathlib.Tactic.NormNum
+import Mathlib.Tactic.Ring
+
+/-!
+# Tests for circulant spectra
+
+Concrete checks at `n = 2` for the shift circulant matrix `[[0, 1], [1, 0]]`:
+its Fourier eigenvalues are `1` and `-1`, its determinant is `-1`, and its
+eigenvalues sum to `0`.
+-/
+
+@[expose] public section
+
+namespace MathlibExt.LinearAlgebra.Matrix.CirculantSpectrumTest
+
+open MathlibExt.LinearAlgebra.Matrix.CirculantSpectrum
+
+private lemma sum_zmod_two (f : ZMod 2 → ℂ) : ∑ k, f k = f 0 + f 1 := by
+  have h : (Finset.univ : Finset (ZMod 2)) = {0, 1} := by decide
+  rw [h, Finset.sum_insert (by decide), Finset.sum_singleton]
+
+private lemma prod_zmod_two (f : ZMod 2 → ℂ) : ∏ k, f k = f 0 * f 1 := by
+  have h : (Finset.univ : Finset (ZMod 2)) = {0, 1} := by decide
+  rw [h, Finset.prod_insert (by decide), Finset.prod_singleton]
+
+/-- The shift vector on `ZMod 2`: `v 0 = 0`, `v 1 = 1`. -/
+private def shiftVec : ZMod 2 → ℂ := fun k => if k = 1 then 1 else 0
+
+private lemma shiftVec_zero : shiftVec 0 = 0 := by simp [shiftVec]
+
+private lemma shiftVec_one : shiftVec 1 = 1 := by simp [shiftVec]
+
+private lemma zeta_two : zeta 2 = -1 := by
+  have h : (2 * Real.pi * Complex.I / ((2 : ℕ) : ℂ)) = Real.pi * Complex.I := by
+    rw [show (2 * Real.pi * Complex.I) = (Real.pi * Complex.I) * ((2 : ℕ) : ℂ) by
+        push_cast; ring,
+      mul_div_cancel_right₀ _ (by norm_num)]
+  unfold zeta
+  rw [h]
+  exact Complex.exp_pi_mul_I
+
+/-- The circulant matrix of the shift vector is the anti-diagonal matrix. -/
+example : (Matrix.circulant shiftVec) 0 1 = 1 := by
+  simp only [Matrix.circulant_apply, shiftVec]
+  rw [show (0 - 1 : ZMod 2) = 1 from by decide, ite_eq_left rfl]
+
+/-- The circulant matrix of the shift vector has a zero diagonal entry. -/
+example : (Matrix.circulant shiftVec) 0 0 = 0 := by
+  simp only [Matrix.circulant_apply, shiftVec]
+  rw [show (0 - 0 : ZMod 2) = 0 from by decide]
+  simp
+
+/-- The `j = 0` Fourier eigenvalue of the shift circulant is `1`. -/
+example : circulantEigenvalue 2 shiftVec 0 = 1 := by
+  rw [circulantEigenvalue_zero, sum_zmod_two, shiftVec_zero, shiftVec_one, zero_add]
+
+/-- The `j = 1` Fourier eigenvalue of the shift circulant is `-1`. -/
+example : circulantEigenvalue 2 shiftVec 1 = -1 := by
+  show (∑ k, shiftVec k * zeta 2 ^ (-(k.val * (1 : ZMod 2).val : ℤ))) = -1
+  rw [sum_zmod_two]
+  have hval : (1 : ZMod 2).val = 1 := rfl
+  rw [hval, shiftVec_zero, shiftVec_one]
+  simp [zeta_two]
+
+/-- The determinant of the shift circulant is `-1`, via the product of eigenvalues. -/
+example : (Matrix.circulant shiftVec).det = -1 := by
+  rw [det_circulant, prod_zmod_two]
+  have h0 : circulantEigenvalue 2 shiftVec 0 = 1 := by
+    rw [circulantEigenvalue_zero, sum_zmod_two, shiftVec_zero, shiftVec_one, zero_add]
+  have h1 : circulantEigenvalue 2 shiftVec 1 = -1 := by
+    show (∑ k, shiftVec k * zeta 2 ^ (-(k.val * (1 : ZMod 2).val : ℤ))) = -1
+    rw [sum_zmod_two]
+    have hval : (1 : ZMod 2).val = 1 := rfl
+    rw [hval, shiftVec_zero, shiftVec_one]
+    simp [zeta_two]
+  rw [h0, h1, one_mul]
+
+/-- The Fourier eigenvalues of the shift circulant sum to `0 = 2 * v 0`. -/
+example : ∑ j, circulantEigenvalue 2 shiftVec j = 0 := by
+  rw [sum_circulantEigenvalue, shiftVec_zero, mul_zero]
+
+/-- The eigenvalue at `j = 0` of the constant vector is the size `n`. -/
+example : circulantEigenvalue 3 (fun _ => (1 : ℂ)) 0 = 3 := by
+  rw [circulantEigenvalue_zero]
+  simp
+
+end MathlibExt.LinearAlgebra.Matrix.CirculantSpectrumTest
