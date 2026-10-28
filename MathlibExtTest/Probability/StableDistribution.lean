@@ -1,0 +1,77 @@
+/-
+Copyright (c) Meta Platforms, Inc. and affiliates.
+All rights reserved.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-/
+
+module
+
+public import MathlibExt.Probability.StableDistribution
+
+@[expose] public section
+
+open MeasureTheory MeasureTheory.Measure ProbabilityTheory
+open scoped NNReal
+open MathlibExt.Probability.StableDistribution
+
+namespace MathlibExtTest.Probability.StableDistribution
+
+/-- The Dirac measure at `0` is stable of index `1`. -/
+example : IsStable (dirac (0 : ℝ)) 1 :=
+  isStable_dirac 0 one_pos (by norm_num)
+
+/-- The Dirac measure at `3` is stable of index `2`. -/
+example : IsStable (dirac (3 : ℝ)) 2 :=
+  isStable_dirac 3 (by norm_num) (by norm_num)
+
+/-- The standard Gaussian is stable of index `2`. -/
+example : IsStable (gaussianReal 0 1) 2 :=
+  isStable_gaussianReal 0 1
+
+/-- A general Gaussian `N(μ, v)` is stable of index `2`. -/
+example (μ : ℝ) (v : ℝ≥0) : IsStable (gaussianReal μ v) 2 :=
+  isStable_gaussianReal μ v
+
+/-- The two-fold convolution power of `δ_a` is `δ_{2a}`. -/
+example (a : ℝ) : convPowStable (dirac a) 2 = dirac (2 * a) := by
+  rw [convPowStable_dirac]
+  norm_num
+
+/-- The two-fold convolution power of `N(μ, v)` is `N(2μ, 2v)`. -/
+example (μ : ℝ) (v : ℝ≥0) :
+    convPowStable (gaussianReal μ v) 2 = gaussianReal (2 * μ) (2 * v) := by
+  rw [convPowStable_gaussianReal]
+  norm_num
+
+/-- The standard Gaussian is nondegenerate. -/
+example : IsNondegenerate (gaussianReal 0 1) :=
+  isNondegenerate_gaussianReal one_ne_zero
+
+/-- A Gaussian with variance `2` is nondegenerate. -/
+example : IsNondegenerate (gaussianReal (-1 : ℝ) 2) :=
+  isNondegenerate_gaussianReal (by norm_num)
+
+/-- The Dirac measure is degenerate: it is a point mass. -/
+example (a : ℝ) : ¬ IsNondegenerate (dirac a) :=
+  not_isNondegenerate_dirac a
+
+/-- The zero-variance Gaussian is a Dirac measure, hence degenerate. -/
+example (μ : ℝ) : ¬ IsNondegenerate (gaussianReal μ 0) := by
+  rw [gaussianReal_zero_var]
+  exact not_isNondegenerate_dirac μ
+
+/-- The Dirac measure is in its own domain of attraction. -/
+example (a : ℝ) : InDomainOfAttraction (dirac a) (dirac a) :=
+  inDomainOfAttraction_dirac a
+
+/-- The Dirac measure is in the domain of attraction of index `1`. -/
+example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 1 :=
+  inDomainOfAttractionIndex_dirac a one_pos (by norm_num)
+
+/-- The Dirac measure is in the domain of attraction of index `2`. -/
+example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 2 :=
+  inDomainOfAttractionIndex_dirac a (by norm_num) (by norm_num)
+
+end MathlibExtTest.Probability.StableDistribution
