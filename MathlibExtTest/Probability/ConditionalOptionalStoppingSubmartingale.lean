@@ -21,8 +21,8 @@ variable {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} [IsProbabilityMeasu
 omit [MeasurableSpace Ω] in
 /-- The stopped value of a constant process is the constant, at any
 stopping time. -/
-private lemma stoppedValueAtInf_const (c : ℝ) (τ : Ω → WithTop ℕ) :
-    stoppedValueAtInf (fun _ => fun _ => c) τ = fun _ => c := by
+private lemma stoppedValueAtTop_const (c : ℝ) (τ : Ω → WithTop ℕ) :
+    stoppedValueAtTop (fun _ => fun _ => c) τ = fun _ => c := by
   funext ω
   show (if τ ω = ⊤ then limUnder atTop (fun n => (fun _ => fun _ => c) n ω)
     else stoppedValue (fun _ => fun _ => c) τ ω) = c
@@ -48,18 +48,18 @@ inequality says `c ≤ᵐ μ[c | ℱ_L]`, and both sides are `c`. -/
 example (c : ℝ) (L M : Ω → WithTop ℕ) (hL : IsStoppingTime ℱ L) (hM : IsStoppingTime ℱ M)
     (hLM : L ≤ M) :
     (fun _ : Ω => c) ≤ᵐ[μ] μ[fun _ : Ω => c | hL.measurableSpace] := by
-  have h := Submartingale.stoppedValueAtInf_le_condExp_stoppedValueAtInf
+  have h := Submartingale.stoppedValueAtTop_le_condExp_stoppedValueAtTop
     (submartingale_const (μ := μ) (ℱ := ℱ) c)
     (uniformIntegrable_const' (μ := μ) c) hL hM hLM
-  rw [stoppedValueAtInf_const, stoppedValueAtInf_const] at h
+  rw [stoppedValueAtTop_const, stoppedValueAtTop_const] at h
   rw [condExp_const hL.measurableSpace_le] at h ⊢
 
 /-- For the constant process, the expectation form says `∫ c ≤ ∫ c`. -/
 example (c : ℝ) (L M : Ω → WithTop ℕ) (hL : IsStoppingTime ℱ L) (hM : IsStoppingTime ℱ M)
     (hLM : L ≤ M) :
-    ∫ ω, stoppedValueAtInf (fun _ => fun _ => c) L ω ∂μ ≤
-      ∫ ω, stoppedValueAtInf (fun _ => fun _ => c) M ω ∂μ :=
-  Submartingale.integral_stoppedValueAtInf_mono_of_uniformIntegrable
+    ∫ ω, stoppedValueAtTop (fun _ => fun _ => c) L ω ∂μ ≤
+      ∫ ω, stoppedValueAtTop (fun _ => fun _ => c) M ω ∂μ :=
+  Submartingale.integral_stoppedValueAtTop_mono_of_uniformIntegrable
     (submartingale_const (μ := μ) (ℱ := ℱ) c)
     (uniformIntegrable_const' (μ := μ) c) hL hM hLM
 
@@ -70,36 +70,36 @@ example {f : ℕ → Ω → ℝ}
     (hsub : Submartingale f ℱ μ) (hui : UniformIntegrable f 1 μ)
     {L M : Ω → WithTop ℕ} (hL : IsStoppingTime ℱ L) (hM : IsStoppingTime ℱ M)
     (hLM : L ≤ M) :
-    stoppedValueAtInf f L ≤ᵐ[μ] μ[stoppedValueAtInf f M | hL.measurableSpace] :=
-  Submartingale.stoppedValueAtInf_le_condExp_stoppedValueAtInf hsub hui hL hM hLM
+    stoppedValueAtTop f L ≤ᵐ[μ] μ[stoppedValueAtTop f M | hL.measurableSpace] :=
+  Submartingale.stoppedValueAtTop_le_condExp_stoppedValueAtTop hsub hui hL hM hLM
 
 /-- Applying the expectation corollary under abstract hypotheses. -/
 example {f : ℕ → Ω → ℝ}
     (hsub : Submartingale f ℱ μ) (hui : UniformIntegrable f 1 μ)
     {L M : Ω → WithTop ℕ} (hL : IsStoppingTime ℱ L) (hM : IsStoppingTime ℱ M)
     (hLM : L ≤ M) :
-    ∫ ω, stoppedValueAtInf f L ω ∂μ ≤ ∫ ω, stoppedValueAtInf f M ω ∂μ :=
-  Submartingale.integral_stoppedValueAtInf_mono_of_uniformIntegrable hsub hui hL hM hLM
+    ∫ ω, stoppedValueAtTop f L ω ∂μ ≤ ∫ ω, stoppedValueAtTop f M ω ∂μ :=
+  Submartingale.integral_stoppedValueAtTop_mono_of_uniformIntegrable hsub hui hL hM hLM
 
-#print axioms Submartingale.stoppedValueAtInf_le_condExp_stoppedValueAtInf
-#print axioms Submartingale.integral_stoppedValueAtInf_mono_of_uniformIntegrable
+#print axioms Submartingale.stoppedValueAtTop_le_condExp_stoppedValueAtTop
+#print axioms Submartingale.integral_stoppedValueAtTop_mono_of_uniformIntegrable
 
 omit [MeasurableSpace Ω] in
 /-- Finite zero stopping retains the original initial value. -/
 theorem characterization_stopped_zero (f : ℕ → Ω → ℝ) :
-    stoppedValueAtInf f (fun _ => (0 : WithTop ℕ)) = f 0 := rfl
+    stoppedValueAtTop f (fun _ => (0 : WithTop ℕ)) = f 0 := rfl
 
 omit [MeasurableSpace Ω] in
 /-- Finite one stopping retains the value after one step. -/
 theorem characterization_stopped_one (f : ℕ → Ω → ℝ) :
-    stoppedValueAtInf f (fun _ => (1 : WithTop ℕ)) = f 1 := rfl
+    stoppedValueAtTop f (fun _ => (1 : WithTop ℕ)) = f 1 := rfl
 
 omit [MeasurableSpace Ω] in
 /-- The infinite branch of a signed nonzero constant process is that constant. -/
 theorem characterization_negative_constant_infinity :
-    stoppedValueAtInf (fun _ : ℕ => fun _ : Ω => (-3 : ℝ)) (fun _ => ⊤) =
+    stoppedValueAtTop (fun _ : ℕ => fun _ : Ω => (-3 : ℝ)) (fun _ => ⊤) =
       fun _ => (-3 : ℝ) :=
-  stoppedValueAtInf_const (-3) _
+  stoppedValueAtTop_const (-3) _
 
 /-- A bounded deterministic process with a genuine strict increase. -/
 def boundedStep (n : ℕ) (_ : Ω) : ℝ := if n = 0 then -2 else 1
@@ -134,7 +134,7 @@ theorem boundedStep_uniformIntegrable : UniformIntegrable (boundedStep : ℕ →
 omit [MeasurableSpace Ω] in
 /-- The bounded strict process converges to one in the infinite branch. -/
 theorem characterization_boundedStep_infinity :
-    stoppedValueAtInf (boundedStep : ℕ → Ω → ℝ) (fun _ => ⊤) = fun _ => (1 : ℝ) := by
+    stoppedValueAtTop (boundedStep : ℕ → Ω → ℝ) (fun _ => ⊤) = fun _ => (1 : ℝ) := by
   funext ω
   change limUnder atTop (fun n => boundedStep n ω) = 1
   have ht : Tendsto (fun n => boundedStep n ω) atTop (𝓝 (1 : ℝ)) := by
@@ -145,15 +145,15 @@ theorem characterization_boundedStep_infinity :
 
 /-- The strict submartingale has literal expectations minus two and one. -/
 theorem characterization_strict_integrals :
-    (∫ ω, stoppedValueAtInf (boundedStep : ℕ → Ω → ℝ) (fun _ => (0 : WithTop ℕ)) ω ∂μ) = -2 ∧
-    (∫ ω, stoppedValueAtInf (boundedStep : ℕ → Ω → ℝ) (fun _ => (1 : WithTop ℕ)) ω ∂μ) = 1 := by
-  norm_num [stoppedValueAtInf, stoppedValue, boundedStep]
+    (∫ ω, stoppedValueAtTop (boundedStep : ℕ → Ω → ℝ) (fun _ => (0 : WithTop ℕ)) ω ∂μ) = -2 ∧
+    (∫ ω, stoppedValueAtTop (boundedStep : ℕ → Ω → ℝ) (fun _ => (1 : WithTop ℕ)) ω ∂μ) = 1 := by
+  norm_num [stoppedValueAtTop, stoppedValue, boundedStep]
 
 /-- The original conditional theorem applies to a nonmartingale process across zero and one. -/
 theorem characterization_strict_conditional :
-    stoppedValueAtInf (boundedStep : ℕ → Ω → ℝ) (fun _ => (0 : WithTop ℕ)) ≤ᵐ[μ]
-      μ[stoppedValueAtInf boundedStep (fun _ => (1 : WithTop ℕ)) |
+    stoppedValueAtTop (boundedStep : ℕ → Ω → ℝ) (fun _ => (0 : WithTop ℕ)) ≤ᵐ[μ]
+      μ[stoppedValueAtTop boundedStep (fun _ => (1 : WithTop ℕ)) |
         (isStoppingTime_const ℱ (0 : ℕ)).measurableSpace] :=
-  Submartingale.stoppedValueAtInf_le_condExp_stoppedValueAtInf boundedStep_submartingale
+  Submartingale.stoppedValueAtTop_le_condExp_stoppedValueAtTop boundedStep_submartingale
     boundedStep_uniformIntegrable (isStoppingTime_const ℱ _) (isStoppingTime_const ℱ _)
     (fun _ => by norm_num)
