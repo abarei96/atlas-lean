@@ -26,8 +26,10 @@ independence. Its integrability corollary reuses the same summable `L¹` series.
 Squaring preserves identical distribution and shrinks each coordinate's comap.
 The supplied square-integrability premise is precisely integrability of `Y 0`.
 
-Both public statements retain their original hypotheses: no joint `iIndepFun`,
-`Integrable (X 0)`, adaptedness or extra measurability premise is introduced.
+In v1, both declarations additionally assume `iIndepFun X μ`, and
+`wald_diagonal_terms` also assumes `Integrable (X 0) μ`. The statements here
+omit those redundant premises and are stronger than the corresponding v1 statements.
+No adaptedness or extra measurability premise is required.
 The generic canonical proof supplies the layer-cake, factorization and summability
 machinery; this module contains only the squared-sequence bridge.
 -/
@@ -47,7 +49,7 @@ private theorem indep_sq_of_filtration
     (MeasurableSpace.comap_le_comap_of_eq_comp (fun x : ℝ => x^2)
       (measurable_id.pow_const 2) rfl)
 
-/-- The stopped sum of squares is integrable under the original diagonal hypotheses. -/
+/-- The stopped sum of squares is integrable under the stated diagonal hypotheses. -/
 theorem integrable_stopped_sum_sq_diag
     {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
     {X : ℕ → Ω → ℝ}
