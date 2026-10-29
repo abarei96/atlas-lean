@@ -46,8 +46,10 @@ base `MathlibExt`, or in Mathlib.
 The diagonal term `wald_diagonal_terms` and the integrability lemma
 `integrable_stopped_sum_sq_diag` are **not** claimed: in v1 both are
 proved by applying Wald's equation to the squared sequence, i.e. they
-rest on batch 5's `wald_equation`, which is not in the base. Re-proving
-them here would duplicate batch 5.
+rest on batch 5's `wald_equation`. The base already contains
+`MeasureTheory.wald_equation` in `MathlibExt/Probability/WaldEquation.lean`
+and the completed `MeasureTheory.wald_second_equation`. Re-proving the
+diagonal results here would duplicate the existing Wald development.
 
 The one place v1's `wald_cross_terms_zero` relies on a helper from
 `WaldEquation.lean` (`sum_range_eq_tsum_ite`, which batch 5 carries as a
@@ -65,7 +67,7 @@ usable unconditional version.
 ## Main results
 
 * `MathlibExt.Probability.WaldCrossTerms.cross_pair_integral_zero`:
-  for i.i.d. mean-zero `X` and a stopping time `T`, with `X_i`
+  for identically distributed, mean-zero `X` and a stopping time `T`, with `X_i`
   independent of the filtration at time `i` and each `X_j` measurable
   with respect to the filtration at time `i > j`,
   `E[X_j · X_i · 1_{T > i}] = 0`.
@@ -87,7 +89,7 @@ open MeasureTheory ProbabilityTheory Filter Finset ENNReal
 namespace MathlibExt.Probability.WaldCrossTerms
 
 /-- A single cross term `E[X_j · X_i · 1_{T > i}]` (with `j < i`) vanishes
-when the `X_i` are i.i.d. mean-zero and `X_i` is independent of
+when the `X_i` are identically distributed with zero mean and `X_i` is independent of
 `(X_j, 1_{T > i})`. -/
 theorem cross_pair_integral_zero
     {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
@@ -123,13 +125,13 @@ theorem cross_pair_integral_zero
     ((hX_iid i 0).integrable_iff.mpr hX_int).aestronglyMeasurable, hmean_i, mul_zero]
 
 /-- The full cross-term contribution to `E[(S_T)^2]` vanishes:
-`E[∑_{i < T} ∑_{j < i} X_j X_i] = 0` under the i.i.d./independence/mean-zero
-assumptions, given suitable measurability and summability bookkeeping. -/
+`E[∑_{i < T} ∑_{j < i} X_j X_i] = 0` for identically distributed, mean-zero variables,
+with each `X_i` independent of the filtration at time `i`, given suitable
+measurability and summability bookkeeping. -/
 theorem wald_cross_terms_zero
     {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
     {X : ℕ → Ω → ℝ}
     (hX_iid : ∀ i j, IdentDistrib (X i) (X j) μ μ)
-    (hX_ind : iIndepFun (β := fun _ => ℝ) X μ)
     (hX_int : Integrable (X 0) μ)
     (hmean : ∫ ω, X 0 ω ∂μ = 0)
     {f : Filtration ℕ m} {T : Ω → ℕ}
@@ -171,9 +173,12 @@ theorem wald_cross_terms_zero
       have hji : j < i := Finset.mem_range.mp hj
       have hj_int : Integrable (X j) μ := (hX_iid j 0).integrable_iff.mpr hX_int
       have hi_int : Integrable (X i) μ := (hX_iid i 0).integrable_iff.mpr hX_int
-      have hindep := hX_ind.indepFun (Nat.ne_of_lt hji)
+      have hindep : IndepFun (X i) (X j) μ := by
+        rw [IndepFun_iff_Indep]
+        exact indep_of_indep_of_le_right (hXf i)
+          (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt j i hji).le_map)
       have hprod : Integrable (fun ω => X j ω * X i ω) μ := by
-        show Integrable (X j * X i) μ; exact hindep.integrable_mul hj_int hi_int
+        show Integrable (X j * X i) μ; exact hindep.symm.integrable_mul hj_int hi_int
       have h_eq_ind : (fun ω => if i < T ω then X j ω * X i ω else 0) =
           Set.indicator {ω | i < T ω} (fun ω => X j ω * X i ω) := by
         ext ω; simp [Set.indicator, Set.mem_ofPred_eq]
@@ -209,7 +214,6 @@ theorem wald_cross_terms_zero_of_bounded
     {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
     {X : ℕ → Ω → ℝ}
     (hX_iid : ∀ i j, IdentDistrib (X i) (X j) μ μ)
-    (hX_ind : iIndepFun (β := fun _ => ℝ) X μ)
     (hX_int : Integrable (X 0) μ)
     (hmean : ∫ ω, X 0 ω ∂μ = 0)
     {f : Filtration ℕ m} {T : Ω → ℕ}
@@ -254,9 +258,12 @@ theorem wald_cross_terms_zero_of_bounded
     apply integrable_finsetSum
     intro j hj
     have hjn : j < n := Finset.mem_range.mp hj
-    have hindep := hX_ind.indepFun (Nat.ne_of_lt hjn)
+    have hindep : IndepFun (X n) (X j) μ := by
+      rw [IndepFun_iff_Indep]
+      exact indep_of_indep_of_le_right (hXf n)
+        (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt j n hjn).le_map)
     show Integrable (X j * X n) μ
-    exact hindep.integrable_mul (hX_int_all j) (hX_int_all n)
+    exact hindep.symm.integrable_mul (hX_int_all j) (hX_int_all n)
   have hsumm : ∑' n, ∫⁻ ω,
       ‖(if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0)‖ₑ ∂μ ≠ ⊤ := by
     have h_tsum_eq : (∑' n, ∫⁻ ω,
@@ -279,6 +286,6 @@ theorem wald_cross_terms_zero_of_bounded
     rw [ENNReal.sum_ne_top]
     intro n _
     exact (h_int_each n).hasFiniteIntegral.ne
-  exact wald_cross_terms_zero hX_iid hX_ind hX_int hmean hT hXf hadapt haesm hsumm
+  exact wald_cross_terms_zero hX_iid hX_int hmean hT hXf hadapt haesm hsumm
 
 end MathlibExt.Probability.WaldCrossTerms

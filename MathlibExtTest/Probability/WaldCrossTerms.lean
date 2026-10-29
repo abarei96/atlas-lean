@@ -143,10 +143,49 @@ theorem cross_terms_gaussian_coords :
     ∫ ω, (∑ i ∈ Finset.range 2, ∑ j ∈ Finset.range i,
       coord j ω * coord i ω) ∂gaussPi = 0 :=
   wald_cross_terms_zero_of_bounded (T := fun _ : ℕ → ℝ => 2) (N := 2)
-    coord_identDistrib coord_iIndepFun coord_integrable coord_mean_zero
+    coord_identDistrib coord_integrable coord_mean_zero
     (isStoppingTime_const _ _) coord_indep_of_filtration coord_adapted
     (fun _ => le_refl 2)
 
 #print axioms cross_terms_gaussian_coords
+
+/-- The total cross-term API accepts canonical one-step adaptedness without
+requiring a joint-independence argument. -/
+theorem total_cross_terms_canonical_assumptions
+    {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → ℝ}
+    (hX_iid : ∀ i j, IdentDistrib (X i) (X j) μ μ)
+    (hX_int : Integrable (X 0) μ)
+    (hmean : ∫ ω, X 0 ω ∂μ = 0)
+    {f : Filtration ℕ m} {T : Ω → ℕ}
+    (hT : IsStoppingTime f (fun ω => (T ω : WithTop ℕ)))
+    (hXf : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (f k) μ)
+    (hadapt : ∀ k, @Measurable Ω ℝ (f (k + 1)) inferInstance (X k))
+    (haesm : ∀ n, AEStronglyMeasurable
+      (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ)
+    (hsumm : ∑' n, ∫⁻ ω,
+      ‖(if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0)‖ₑ ∂μ ≠ ⊤) :
+    ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
+      X j ω * X i ω) ∂μ = 0 :=
+  wald_cross_terms_zero hX_iid hX_int hmean hT hXf
+    (fun j _ hji => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hji)) le_rfl) haesm hsumm
+
+/-- The bounded total cross-term API accepts the canonical Wald assumptions
+without requiring joint independence. -/
+theorem bounded_cross_terms_canonical_assumptions
+    {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → ℝ}
+    (hX_iid : ∀ i j, IdentDistrib (X i) (X j) μ μ)
+    (hX_int : Integrable (X 0) μ)
+    (hmean : ∫ ω, X 0 ω ∂μ = 0)
+    {f : Filtration ℕ m} {T : Ω → ℕ}
+    (hT : IsStoppingTime f (fun ω => (T ω : WithTop ℕ)))
+    (hXf : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (f k) μ)
+    (hadapt : ∀ k, @Measurable Ω ℝ (f (k + 1)) inferInstance (X k))
+    {N : ℕ} (hT_bdd : ∀ ω, T ω ≤ N) :
+    ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
+      X j ω * X i ω) ∂μ = 0 :=
+  wald_cross_terms_zero_of_bounded hX_iid hX_int hmean hT hXf
+    (fun j _ hji => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hji)) le_rfl) hT_bdd
 
 end MathlibExtTest.Probability.WaldCrossTerms
