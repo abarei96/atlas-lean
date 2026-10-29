@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 module
 
 import MathlibExt.Analysis.FunctionalAnalysis.SchurTest
+import Mathlib.Analysis.CStarAlgebra.Matrix
 
 import Mathlib.Tactic.FinCases
 import Mathlib.Tactic.NormNum
@@ -93,5 +94,68 @@ theorem schur_diagonal_norm_le :
     ‖schurCLM (Matrix.diagonal (![1, 2] : Fin 2 → ℂ)) (by norm_num) (by norm_num)
       diag_row_sum diag_col_sum‖ ≤ 2 :=
   norm_schurCLM_le_of_le _ (by norm_num) diag_row_sum diag_col_sum
+
+/-! Canonical operator and scoped L2 importing clients. -/
+
+open scoped Matrix.Norms.L2Operator
+
+private def allOnesMatrix : Matrix (Fin 2) (Fin 2) ℂ := fun _ _ => 1
+
+/-- The actual L2 norm of the all-ones matrix is at least 2, unlike its entrywise norm. -/
+private theorem allOnes_l2_norm_ge : 2 ≤ ‖allOnesMatrix‖ := by
+  let x : EuclideanSpace ℂ (Fin 2) := WithLp.toLp 2 (fun _ => (1 : ℂ))
+  have hx : 0 < ‖x‖ := by
+    apply norm_pos_iff.mpr
+    intro h
+    have h0 := congrArg (fun z : EuclideanSpace ℂ (Fin 2) => z 0) h
+    norm_num [x] at h0
+  have haction : Matrix.toEuclideanCLM (n := Fin 2) (𝕜 := ℂ)
+      allOnesMatrix x = (2 : ℂ) • x := by
+    change Matrix.toEuclideanCLM (n := Fin 2) (𝕜 := ℂ) allOnesMatrix
+      (WithLp.toLp 2 (fun _ => (1 : ℂ))) =
+        (2 : ℂ) • WithLp.toLp 2 (fun _ => (1 : ℂ))
+    rw [Matrix.toEuclideanCLM_toLp]
+    ext i
+    simp [allOnesMatrix, Matrix.mulVec, dotProduct]
+  have h := (Matrix.toEuclideanCLM (n := Fin 2) (𝕜 := ℂ) allOnesMatrix).le_opNorm x
+  have hmul : 2 * ‖x‖ ≤ ‖allOnesMatrix‖ * ‖x‖ := by
+    simpa [haction, norm_smul, Matrix.l2_opNorm_toEuclideanCLM] using h
+  exact le_of_mul_le_mul_right hmul hx
+
+/-- The rectangular all-ones 2×3 operator has the Schur bound √6. -/
+theorem schur_rectangular_canonical_norm :
+    ‖(Matrix.toEuclideanLin
+      (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 3) ℂ)).toContinuousLinearMap‖ ≤
+      Real.sqrt 6 := by
+  have h : ‖(Matrix.toEuclideanLin
+      (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 3) ℂ)).toContinuousLinearMap‖ ≤
+      Real.sqrt (3 * 2) :=
+    norm_toEuclideanLin_le _ (by norm_num) (by norm_num)
+      (fun _ => by simp) (fun _ => by simp)
+  simpa only [show (3 : ℝ) * 2 = 6 by norm_num] using h
+
+/-- The square canonical identity operator has norm at most 1. -/
+theorem schur_identity_canonical_clm_norm :
+    ‖Matrix.toEuclideanCLM (n := Fin 2) (𝕜 := ℂ)
+      (1 : Matrix (Fin 2) (Fin 2) ℂ)‖ ≤ Real.sqrt (1 * 1) :=
+  norm_toEuclideanCLM_le _ zero_le_one zero_le_one one_row_sum one_col_sum
+
+/-- The scoped matrix L2 norm of the all-ones matrix is exactly 2. -/
+theorem schur_allOnes_canonical_l2_norm : ‖allOnesMatrix‖ = 2 := by
+  apply le_antisymm ?_ allOnes_l2_norm_ge
+  have h : ‖allOnesMatrix‖ ≤ Real.sqrt (2 * 2) :=
+    norm_matrix_l2_le allOnesMatrix (by norm_num) (by norm_num)
+      allOnes_row_sum allOnes_col_sum
+  simpa only [Real.sqrt_mul_self (by norm_num : (0 : ℝ) ≤ 2)] using h
+
+/-- The rectangular bound accepts an empty domain without a nonempty premise. -/
+theorem schur_empty_domain_canonical_bound (A : Matrix (Fin 2) (Fin 0) ℂ) :
+    ‖(Matrix.toEuclideanLin A).toContinuousLinearMap‖ ≤ Real.sqrt (0 * 0) :=
+  norm_toEuclideanLin_le A le_rfl le_rfl (fun _ => by simp) (fun _ => by simp)
+
+/-- The scoped matrix L2 bound also accepts an empty square index type. -/
+theorem schur_empty_square_canonical_l2_bound (A : Matrix (Fin 0) (Fin 0) ℂ) :
+    ‖A‖ ≤ Real.sqrt (0 * 0) :=
+  norm_matrix_l2_le A le_rfl le_rfl (fun _ => by simp) (fun _ => by simp)
 
 end MathlibExtTest.Analysis.FunctionalAnalysis.SchurTestTests
