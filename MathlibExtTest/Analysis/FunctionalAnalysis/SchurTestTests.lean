@@ -151,11 +151,11 @@ theorem schur_allOnes_canonical_l2_norm : ‖allOnesMatrix‖ = 2 := by
 /-- The rectangular bound accepts an empty domain without a nonempty premise. -/
 theorem schur_empty_domain_canonical_bound (A : Matrix (Fin 2) (Fin 0) ℂ) :
     ‖(Matrix.toEuclideanLin A).toContinuousLinearMap‖ ≤ Real.sqrt (0 * 0) :=
-  norm_toEuclideanLin_le A le_rfl le_rfl (fun _ => by simp) (fun _ => by simp)
+  norm_toEuclideanLin_le A le_rfl le_rfl (fun _ => by simp) (fun j => Fin.elim0 j)
 
 /-- The scoped matrix L2 bound also accepts an empty square index type. -/
 theorem schur_empty_square_canonical_l2_bound (A : Matrix (Fin 0) (Fin 0) ℂ) :
     ‖A‖ ≤ Real.sqrt (0 * 0) :=
-  norm_matrix_l2_le A le_rfl le_rfl (fun _ => by simp) (fun _ => by simp)
+  norm_matrix_l2_le A le_rfl le_rfl (fun i => Fin.elim0 i) (fun j => Fin.elim0 j)
 
 end MathlibExtTest.Analysis.FunctionalAnalysis.SchurTestTests
