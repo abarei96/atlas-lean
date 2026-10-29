@@ -14,6 +14,8 @@ public import Mathlib.MeasureTheory.Measure.LevyConvergence
 public import Mathlib.Analysis.SpecialFunctions.Complex.LogBounds
 public import Mathlib.MeasureTheory.Measure.Typeclasses.Probability
 
+import MathlibExt.Probability.CharFunStandardizedBinomial
+
 /-!
 # Poisson convergence in law
 
@@ -31,6 +33,9 @@ The weak-convergence form proved here is not stated in v1 and is not in
 batches 19 or 30: it is proved directly from the characteristic functions via
 Lévy's continuity theorem, so it needs neither the Bernoulli-sum pmf formula
 nor the elementary-symmetric-polynomial core.
+
+The binomial characteristic function is obtained from the existing
+`CharFunStandardizedBinomial.charFun_binomial_real` theorem.
 
 The choice `pₙ = λ / (n + λ)` is the standard one-parameter family with
 `n pₙ → λ` and `pₙ ∈ [0, 1]` for every `n` (including `n = 0`, where the
@@ -72,24 +77,7 @@ theorem charFun_binomialProbMeasure (n : ℕ) (p : I) (t : ℝ) :
     charFun (binomialProbMeasure n p : Measure ℝ) t =
       ((1 - (p : ℝ)) + (p : ℝ) * Complex.exp (↑t * Complex.I)) ^ n := by
   show charFun (Bin(ℝ, n, p)) t = _
-  rw [charFun_apply_real, integral_map_cast_binomial]
-  have hbin : ((1 - (p : ℝ)) + (p : ℝ) * Complex.exp (↑t * Complex.I)) ^ n =
-      ∑ k ∈ Finset.range (n + 1),
-        ((p : ℝ) * Complex.exp (↑t * Complex.I)) ^ k * (1 - (p : ℝ)) ^ (n - k) *
-          (n.choose k : ℂ) := by
-    rw [add_comm, add_pow]
-  rw [hbin, Nat.range_succ_eq_Iic]
-  apply Finset.sum_congr rfl
-  intro k _
-  rw [Complex.real_smul, Complex.ofReal_natCast]
-  have hexp : Complex.exp (↑t * (↑k : ℂ) * Complex.I) =
-      (Complex.exp (↑t * Complex.I)) ^ k := by
-    rw [show (↑t : ℂ) * (↑k : ℂ) * Complex.I = (↑k : ℂ) * (↑t * Complex.I) by
-      ring, Complex.exp_nat_mul]
-  rw [hexp]
-  simp only [Complex.ofReal_mul, Complex.ofReal_pow, Complex.ofReal_natCast,
-    Complex.ofReal_sub, Complex.ofReal_one]
-  ring
+  exact MathlibExt.Probability.CharFunStandardizedBinomial.charFun_binomial_real n p t
 
 /-- **Characteristic function of a Poisson law.**
 `φ_{Poisson(λ)}(t) = exp(λ * (e^{it} - 1))`. -/
