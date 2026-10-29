@@ -20,7 +20,8 @@ public import Mathlib.Topology.Algebra.InfiniteSum.Real
 /-!
 # Hilbert's inequality
 
-Hilbert's inequality states that for square-summable real sequences `a`, `b`,
+Hilbert's inequality gives summability of the nonnegative double series and the
+following bound for square-summable real sequences `a`, `b`,
 
 ```
 ∑' (m, n), |a m * b n| / ((m + 1) + (n + 1)) ≤ π * √(∑' m, (a m) ^ 2) * √(∑' n, (b n) ^ 2).
@@ -572,9 +573,10 @@ theorem hilbert_inequality_finite {N : ℕ} {a b : ℕ → ℝ}
   rw [hilbertKernel, div_eq_mul_inv]
   ring
 
-/-- Hilbert's inequality for square-summable real sequences. -/
-theorem hilbert_inequality {a b : ℕ → ℝ}
+/-- The common finite-sum proof gives absolute convergence and the Hilbert bound. -/
+private theorem summable_and_hilbert_inequality {a b : ℕ → ℝ}
     (ha : Summable (fun n => (a n) ^ 2)) (hb : Summable (fun n => (b n) ^ 2)) :
+    Summable (fun p : ℕ × ℕ => |a p.1 * b p.2| * hilbertKernel p.1 p.2) ∧
     ∑' (p : ℕ × ℕ), |a p.1 * b p.2| * hilbertKernel p.1 p.2 ≤
       Real.pi * Real.sqrt (∑' (n : ℕ), (a n) ^ 2) *
         Real.sqrt (∑' (n : ℕ), (b n) ^ 2) := by
@@ -628,6 +630,22 @@ theorem hilbert_inequality {a b : ℕ → ℝ}
             _ ≤ ∑' (n : ℕ), (b n) ^ 2 :=
                 hb.sum_le_tsum _ (fun n _ => sq_nonneg _)
         gcongr
-  exact Real.tsum_le_of_sum_le (fun p => hF_nonneg p) hbound
+  exact ⟨summable_of_sum_le hF_nonneg hbound,
+    Real.tsum_le_of_sum_le hF_nonneg hbound⟩
+
+
+/-- The nonnegative Hilbert double series is summable for square-summable inputs. -/
+theorem summable_hilbert_terms {a b : ℕ → ℝ}
+    (ha : Summable (fun n => (a n) ^ 2)) (hb : Summable (fun n => (b n) ^ 2)) :
+    Summable (fun p : ℕ × ℕ => |a p.1 * b p.2| * hilbertKernel p.1 p.2) :=
+  (summable_and_hilbert_inequality ha hb).1
+
+/-- Hilbert's inequality for square-summable real sequences. -/
+theorem hilbert_inequality {a b : ℕ → ℝ}
+    (ha : Summable (fun n => (a n) ^ 2)) (hb : Summable (fun n => (b n) ^ 2)) :
+    ∑' (p : ℕ × ℕ), |a p.1 * b p.2| * hilbertKernel p.1 p.2 ≤
+      Real.pi * Real.sqrt (∑' (n : ℕ), (a n) ^ 2) *
+        Real.sqrt (∑' (n : ℕ), (b n) ^ 2) :=
+  (summable_and_hilbert_inequality ha hb).2
 
 end MathlibExt.Analysis.Series.HilbertInequality
