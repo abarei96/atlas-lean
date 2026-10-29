@@ -13,6 +13,7 @@ public import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
 public import Mathlib.Topology.Order.MonotoneConvergence
 public import Mathlib.Topology.Algebra.Order.Field
 public import Mathlib.Order.Filter.AtTopBot.Basic
+public import MathlibExt.Probability.RegularVariation
 
 @[expose] public section
 
@@ -21,7 +22,7 @@ section
 open Filter
 open scoped Topology
 
-namespace MathlibExt.Probability.RegularVariationGenInv
+namespace MathlibExt.Probability.RegularVariation
 
 /-!
 # Generalized inverse of a regularly varying function
@@ -42,17 +43,13 @@ not claimed here.
 
 ## Relation to Mathlib and to earlier batches
 
-The definitions `IsSlowlyVarying` and `IsRegularlyVarying` below are
-verbatim copies of the v1 definitions, as ported by batch 49 (PR #474) in
-`MathlibExt.Probability.RegularVariation`. They are kept in this file's own
-namespace so the file is self-contained on the base; on rebase, delete the
-copies and re-point at the canonical definitions. Mathlib has no
-regular-variation API.
+The predicates are the canonical `IsSlowlyVarying` and `IsRegularlyVarying`
+from `MathlibExt.Probability.RegularVariation`. Slow variation uses eventual
+positivity. The proof chooses a threshold above the positivity, representation,
+and monotonicity thresholds before evaluating the slowly varying factor.
 
 ## Main results
 
-* `IsSlowlyVarying`, `IsRegularlyVarying`: slowly / regularly varying
-  functions at infinity.
 * `regularlyVarying_generalized_inverse`: the generalized-inverse sequence.
 
 ## Proof outline
@@ -72,17 +69,6 @@ so `n * f (a n)` is eventually squeezed between `(1 - δ) ^ α` and
 `(1 + δ) ^ α`; letting `δ → 0` gives the limit `1`.
 -/
 
-/-- `L : ℝ → ℝ` is *slowly varying* (at infinity) if it is positive on
-`(0, ∞)` and `L (c * x) / L x → 1` as `x → ∞` for every `c > 0`. -/
-def IsSlowlyVarying (L : ℝ → ℝ) : Prop :=
-  (∀ x, 0 < x → 0 < L x) ∧
-  ∀ c : ℝ, 0 < c → Tendsto (fun x => L (c * x) / L x) atTop (𝓝 1)
-
-/-- `f` is *regularly varying* with index `ρ` if it can be written as
-`f x = x ^ ρ * L x` eventually as `x → ∞`, where `L` is slowly varying. -/
-def IsRegularlyVarying (f : ℝ → ℝ) (ρ : ℝ) : Prop :=
-  ∃ L : ℝ → ℝ, IsSlowlyVarying L ∧ ∀ᶠ x in atTop, f x = x ^ ρ * L x
-
 /-- Ratio form of regular variation: `f (c * x) / f x → c ^ ρ` as
 `x → ∞`, for every `c > 0`. -/
 private theorem tendsto_ratio {f : ℝ → ℝ} {ρ : ℝ} {L : ℝ → ℝ}
@@ -90,16 +76,16 @@ private theorem tendsto_ratio {f : ℝ → ℝ} {ρ : ℝ} {L : ℝ → ℝ}
     (hrep : ∀ᶠ x in atTop, f x = x ^ ρ * L x) {c : ℝ} (hc : 0 < c) :
     Tendsto (fun x => f (c * x) / f x) atTop (𝓝 (c ^ ρ)) := by
   have hpos : ∀ᶠ x in atTop, 0 < f x := by
-    filter_upwards [hrep, eventually_gt_atTop (0 : ℝ)] with x hx hx0
+    filter_upwards [hrep, hL.1, eventually_gt_atTop (0 : ℝ)] with x hx hLx hx0
     rw [hx]
-    exact mul_pos (Real.rpow_pos_of_pos hx0 ρ) (hL.1 x hx0)
+    exact mul_pos (Real.rpow_pos_of_pos hx0 ρ) hLx
   have hcx : ∀ᶠ x in atTop, f (c * x) = (c * x) ^ ρ * L (c * x) :=
     (tendsto_id.const_mul_atTop hc).eventually hrep
   have hev : ∀ᶠ x in atTop, f (c * x) / f x = c ^ ρ * (L (c * x) / L x) := by
-    filter_upwards [hrep, eventually_gt_atTop (0 : ℝ), hpos, hcx] with x hx hx0 hfx hcx'
+    filter_upwards [hrep, hL.1, eventually_gt_atTop (0 : ℝ), hpos, hcx] with x hx hLx hx0 hfx hcx'
     rw [hcx', hx, Real.mul_rpow hc.le hx0.le]
     have h1 : (x : ℝ) ^ ρ ≠ 0 := (Real.rpow_pos_of_pos hx0 ρ).ne'
-    have h2 : L x ≠ 0 := (hL.1 x hx0).ne'
+    have h2 : L x ≠ 0 := hLx.ne'
     field_simp
   have hmul : Tendsto (fun x => c ^ ρ * (L (c * x) / L x)) atTop (𝓝 (c ^ ρ)) := by
     have h := (hL.2 c hc).const_mul (c ^ ρ)
@@ -111,7 +97,8 @@ non-increasing tends to `0` at infinity. -/
 private theorem tendsto_zero_of_antitone_regVarying {f : ℝ → ℝ} {α : ℝ}
     (hα : 0 < α) {L : ℝ → ℝ} (hL : IsSlowlyVarying L) {X0 : ℝ} (hX0 : 0 < X0)
     (hmono : ∀ x, X0 ≤ x → ∀ y, x ≤ y → f y ≤ f x)
-    (hrep : ∀ x, X0 ≤ x → f x = x ^ (-α) * L x) :
+    (hrep : ∀ x, X0 ≤ x → f x = x ^ (-α) * L x)
+    (hLpos : ∀ x, X0 ≤ x → 0 < L x) :
     Tendsto f atTop (𝓝 0) := by
   set u : ℕ → ℝ := fun k => f ((2 : ℝ) ^ k * X0) with hu
   have h2k : ∀ k : ℕ, X0 ≤ (2 : ℝ) ^ k * X0 := fun k => by
@@ -128,7 +115,7 @@ private theorem tendsto_zero_of_antitone_regVarying {f : ℝ → ℝ} {α : ℝ}
     simp only [hu]
     rw [hrep _ (h2k k)]
     exact mul_pos (Real.rpow_pos_of_pos (mul_pos (pow_pos (by norm_num) k) hX0) _)
-      (hL.1 _ (mul_pos (pow_pos (by norm_num) k) hX0))
+      (hLpos _ (h2k k))
   have hbddBelow : BddBelow (Set.range u) :=
     ⟨0, fun y ⟨k, hk⟩ => hk ▸ (hpos_u k).le⟩
   have hlim := tendsto_atTop_ciInf hanti hbddBelow
@@ -181,7 +168,7 @@ private theorem tendsto_zero_of_antitone_regVarying {f : ℝ → ℝ} {α : ℝ}
     rw [hrep x (le_trans (h2k K) hx)]
     exact mul_pos (Real.rpow_pos_of_pos
       (lt_of_lt_of_le (mul_pos (pow_pos (by norm_num) K) hX0) hx) _)
-      (hL.1 x (lt_of_lt_of_le (mul_pos (pow_pos (by norm_num) K) hX0) hx))
+      (hLpos x (le_trans (h2k K) hx))
   rw [Real.dist_eq, sub_zero, abs_of_pos hfxpos]
   linarith [hK', hfx]
 
@@ -198,10 +185,16 @@ theorem regularlyVarying_generalized_inverse (f : ℝ → ℝ) (α : ℝ)
   obtain ⟨L, hL, hrep⟩ := hf
   obtain ⟨X1, hX1⟩ := eventually_atTop.mp hdecr
   obtain ⟨X2, hX2⟩ := eventually_atTop.mp hrep
-  set X0 : ℝ := max (max X1 X2) 1 with hX0def
+  obtain ⟨X3, hX3⟩ := eventually_atTop.mp hL.1
+  set X0 : ℝ := max (max (max X1 X2) X3) 1 with hX0def
   have hX0 : 0 < X0 := lt_of_lt_of_le one_pos (le_max_right _ _)
-  have hX1le : X1 ≤ X0 := le_trans (le_max_left _ _) (le_max_left _ _)
-  have hX2le : X2 ≤ X0 := le_trans (le_max_right _ _) (le_max_left _ _)
+  have hX1le : X1 ≤ X0 :=
+    le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) (le_max_left _ _)
+  have hX2le : X2 ≤ X0 :=
+    le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) (le_max_left _ _)
+  have hX3le : X3 ≤ X0 := le_trans (le_max_right _ _) (le_max_left _ _)
+  have hLposX : ∀ x, X0 ≤ x → 0 < L x :=
+    fun x hx => hX3 x (le_trans hX3le hx)
   have hmono : ∀ x, X0 ≤ x → ∀ y, x ≤ y → f y ≤ f x :=
     fun x hx y hy => hX1 x (le_trans hX1le hx) y hy
   have hrepX : ∀ x, X0 ≤ x → f x = x ^ (-α) * L x :=
@@ -210,9 +203,9 @@ theorem regularlyVarying_generalized_inverse (f : ℝ → ℝ) (α : ℝ)
     intro x hx
     rw [hrepX x hx]
     exact mul_pos (Real.rpow_pos_of_pos (lt_of_lt_of_le hX0 hx) _)
-      (hL.1 x (lt_of_lt_of_le hX0 hx))
+      (hLposX x hx)
   have hzero : Tendsto f atTop (𝓝 0) :=
-    tendsto_zero_of_antitone_regVarying hα hL hX0 hmono hrepX
+    tendsto_zero_of_antitone_regVarying hα hL hX0 hmono hrepX hLposX
   classical
   set S : ℕ → Set ℝ := fun n => {x | (n : ℝ)⁻¹ ≤ f x} with hS
   have hBdd : ∀ n : ℕ, 1 ≤ n → BddAbove (S n) := by
@@ -421,6 +414,6 @@ theorem regularlyVarying_generalized_inverse (f : ℝ → ℝ) (α : ℝ)
     constructor <;> linarith
   exact eventually_atTop.mp hmain
 
-end MathlibExt.Probability.RegularVariationGenInv
+end MathlibExt.Probability.RegularVariation
 
 end
