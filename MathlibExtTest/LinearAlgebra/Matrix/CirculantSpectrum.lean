@@ -96,4 +96,26 @@ example : circulantEigenvalue 3 (fun _ => (1 : ℂ)) 0 = 3 := by
   rw [circulantEigenvalue_zero]
   simp
 
+/-- The exponential remains total at size zero, where it is `1`. -/
+example : zeta 0 = 1 := by simp [zeta]
+
+/-- At size one the exponential is the primitive first root, `1`. -/
+example : zeta 1 = 1 := by simp [zeta]
+
+/-- At size one the only eigenvalue is the only vector entry. -/
+example (v : ZMod 1 → ℂ) : circulantEigenvalue 1 v 0 = v 0 := by
+  rw [circulantEigenvalue_zero]
+  simp only [Fintype.sum_unique]
+  exact congrArg v (Subsingleton.elim _ _)
+
+/-- The size-one Fourier matrix is the identity. -/
+example : fourierMatrix 1 = (1 : Matrix (ZMod 1) (ZMod 1) ℂ) := by
+  ext i j
+  simp [fourierMatrix, zeta, Matrix.one_apply, Subsingleton.elim i j]
+
+/-- The size-one inverse Fourier matrix is also the identity. -/
+example : fourierMatrixInv 1 = (1 : Matrix (ZMod 1) (ZMod 1) ℂ) := by
+  ext i j
+  simp [fourierMatrixInv, zeta, Matrix.one_apply, Subsingleton.elim i j]
+
 end MathlibExt.LinearAlgebra.Matrix.CirculantSpectrumTest
