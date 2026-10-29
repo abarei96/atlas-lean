@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import MathlibExt.Probability.MarkovChainFunctionCK
+import MathlibExt.Probability.MarkovChainChapmanKolmogorov
 
 @[expose] public section
 
@@ -95,4 +96,103 @@ example {Ω : Type*} (c : ℝ) :
 #print axioms MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_comp_eq_integral_pow
 #print axioms MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.integral_comp_eq
 
+
+/-- Zero steps retain the present state and the original boundedness hypothesis. -/
+example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : IsMarkovChain X ℱ κ μ) (k : ℕ) {f : S → ℝ}
+    (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X k | ℱ k ] =ᵐ[μ] f ∘ X k := by
+  have h := hMC.condExp_comp_eq_integral_pow k 0 hf hfb
+  have hdirac : (fun ω => ∫ y, f y ∂(κ ^ 0) (X k ω)) = f ∘ X k := by
+    funext ω
+    change ∫ y, f y ∂Kernel.id (X k ω) = f (X k ω)
+    rw [Kernel.id_apply]
+    exact integral_dirac' _ _ hf
+  rwa [Nat.add_zero, hdirac] at h
+
+/-- The general formula specializes to the one-step transition kernel. -/
+example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : IsMarkovChain X ℱ κ μ) (k : ℕ) {f : S → ℝ}
+    (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X (k + 1) | ℱ k ] =ᵐ[μ] fun ω => ∫ y, f y ∂κ (X k ω) := by
+  simpa only [pow_one] using hMC.condExp_comp_eq_integral_pow k 1 hf hfb
+
+/-- A signed indicator is a bounded state function with a literal uniform bound. -/
+example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : IsMarkovChain X ℱ κ μ) (k n : ℕ) {B : Set S} (hB : MeasurableSet B) :
+    μ[ (B.indicator (fun _ => (-2 : ℝ))) ∘ X (k + n) | ℱ k ] =ᵐ[μ]
+      fun ω => ∫ y, B.indicator (fun _ => (-2 : ℝ)) y ∂(κ ^ n) (X k ω) := by
+  have hf : StronglyMeasurable (B.indicator (fun _ => (-2 : ℝ))) :=
+    stronglyMeasurable_const.indicator hB
+  have hfb : ∃ C, ∀ y, ‖B.indicator (fun _ => (-2 : ℝ)) y‖ ≤ C := by
+    classical
+    refine ⟨2, fun y => ?_⟩
+    by_cases hy : y ∈ B
+    · simp [Set.indicator_of_mem hy]
+    · simp [Set.indicator_of_notMem hy]
+  exact hMC.condExp_comp_eq_integral_pow k n hf hfb
+
+/-- Existing canonical witnesses are accepted by the one-step function API. -/
+theorem canonical_one_step {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : MathlibExt.Probability.MarkovChainChapmanKolmogorov.IsMarkovChain X ℱ κ μ)
+    (k : ℕ) {f : S → ℝ} (hf : StronglyMeasurable f)
+    (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X (k + 1) | ℱ k ] =ᵐ[μ] fun ω => ∫ y, f y ∂κ (X k ω) :=
+  MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_one_step_eq_integral
+    hMC k hf hfb
+
+/-- Existing canonical witnesses are accepted at every natural step count. -/
+theorem canonical_n_steps {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : MathlibExt.Probability.MarkovChainChapmanKolmogorov.IsMarkovChain X ℱ κ μ)
+    (k n : ℕ) {f : S → ℝ} (hf : StronglyMeasurable f)
+    (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X (k + n) | ℱ k ] =ᵐ[μ]
+      fun ω => ∫ y, f y ∂(κ ^ n) (X k ω) :=
+  MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_comp_eq_integral_pow
+    hMC k n hf hfb
+
+/-- Existing canonical witnesses are accepted by the integrated function API. -/
+theorem canonical_integrated {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : MathlibExt.Probability.MarkovChainChapmanKolmogorov.IsMarkovChain X ℱ κ μ)
+    (k n : ℕ) {f : S → ℝ} (hf : StronglyMeasurable f)
+    (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    ∫ ω, f (X (k + n) ω) ∂μ =
+      ∫ ω, (∫ y, f y ∂(κ ^ n) (X k ω)) ∂μ :=
+  MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.integral_comp_eq hMC k n hf hfb
+
+/-- A canonical witness also works at the zero-step boundary. -/
+theorem canonical_zero_steps {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
+    {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : MathlibExt.Probability.MarkovChainChapmanKolmogorov.IsMarkovChain X ℱ κ μ)
+    (k : ℕ) {f : S → ℝ} (hf : StronglyMeasurable f)
+    (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X (k + 0) | ℱ k ] =ᵐ[μ]
+      fun ω => ∫ y, f y ∂(κ ^ 0) (X k ω) :=
+  MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_comp_eq_integral_pow
+    hMC k 0 hf hfb
+
+/-- The general canonical function API agrees with one-step indexing. -/
+theorem canonical_one_step_from_n_steps {Ω S : Type*} {m : MeasurableSpace Ω}
+    [MeasurableSpace S] {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℕ → Ω → S} {ℱ : Filtration ℕ m} {κ : Kernel S S} [IsMarkovKernel κ]
+    (hMC : MathlibExt.Probability.MarkovChainChapmanKolmogorov.IsMarkovChain X ℱ κ μ)
+    (k : ℕ) {f : S → ℝ} (hf : StronglyMeasurable f)
+    (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
+    μ[ f ∘ X (k + 1) | ℱ k ] =ᵐ[μ]
+      fun ω => ∫ y, f y ∂(κ ^ 1) (X k ω) :=
+  MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_comp_eq_integral_pow
+    hMC k 1 hf hfb
 end MathlibExtTest.Probability.MarkovChainFunctionCK
