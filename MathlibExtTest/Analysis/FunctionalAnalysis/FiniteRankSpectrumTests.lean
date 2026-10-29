@@ -371,4 +371,20 @@ example : ({μ | Module.End.HasEigenvalue
       finiteDimensional_range_projE0)
     finrank_range_projE0_le
 
+/-- The chosen family exposes an actual eigenvector at the nonzero eigenvalue 1. -/
+theorem chosen_family_has_eigenvector_one :
+    ∃ xs : {μ // Module.End.HasEigenvalue
+        (projE0 : lp (fun _ : ℕ => ℂ) 2 →ₗ[ℂ] lp (fun _ : ℕ => ℂ) 2) μ ∧ μ ≠ 0} →
+        lp (fun _ : ℕ => ℂ) 2,
+      LinearIndependent ℂ xs ∧
+        (∀ μ, xs μ ∈ LinearMap.range
+          (projE0 : lp (fun _ : ℕ => ℂ) 2 →ₗ[ℂ] lp (fun _ : ℕ => ℂ) 2)) ∧
+        Module.End.HasEigenvector
+          (projE0 : lp (fun _ : ℕ => ℂ) 2 →ₗ[ℂ] lp (fun _ : ℕ => ℂ) 2) 1
+          (xs ⟨1, hasEigenvalue_one_projE0, by norm_num⟩) := by
+  obtain ⟨xs, hli, hmem, heigen⟩ :=
+    Module.End.exists_linearIndependent_eigenvectors
+      (T := (projE0 : lp (fun _ : ℕ => ℂ) 2 →ₗ[ℂ] lp (fun _ : ℕ => ℂ) 2))
+  exact ⟨xs, hli, hmem, heigen ⟨1, hasEigenvalue_one_projE0, by norm_num⟩⟩
+
 end MathlibExtTest.Analysis.FunctionalAnalysis.FiniteRankSpectrumTests

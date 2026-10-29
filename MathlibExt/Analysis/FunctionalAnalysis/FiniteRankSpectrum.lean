@@ -92,13 +92,14 @@ and all lie in the range of `T`. -/
 theorem Module.End.exists_linearIndependent_eigenvectors :
     ∃ xs : {μ // Module.End.HasEigenvalue T μ ∧ μ ≠ 0} → E,
       LinearIndependent 𝕜 xs ∧
-        ∀ μ, xs μ ∈ LinearMap.range T := by
+        (∀ μ, xs μ ∈ LinearMap.range T) ∧
+        ∀ μ : {μ // T.HasEigenvalue μ ∧ μ ≠ 0}, T.HasEigenvector (μ : 𝕜) (xs μ) := by
   have hex : ∀ μ : {μ // Module.End.HasEigenvalue T μ ∧ μ ≠ 0},
       ∃ v, T.HasEigenvector μ v := by
     intro μ
     exact μ.2.1.exists_hasEigenvector
   choose xs hxs using hex
-  refine ⟨xs, Module.End.eigenvectors_linearIndependent T _ xs hxs, fun μ ↦ ?_⟩
+  refine ⟨xs, Module.End.eigenvectors_linearIndependent T _ xs hxs, (fun μ ↦ ?_), hxs⟩
   exact Module.End.eigenvector_mem_range_of_hasEigenvector (hxs μ) μ.2.2
 
 /-- **Eigenvalue finiteness for finite-rank operators.** A finite-rank
@@ -107,7 +108,7 @@ theorem Module.End.finite_nonzero_hasEigenvalue_of_finiteDimensional_range
     (hF : FiniteDimensional 𝕜 (LinearMap.range T)) :
     ({μ | Module.End.HasEigenvalue T μ ∧ μ ≠ 0} : Set 𝕜).Finite := by
   have : FiniteDimensional 𝕜 (LinearMap.range T) := hF
-  obtain ⟨xs, hli, hmem⟩ := Module.End.exists_linearIndependent_eigenvectors (T := T)
+  obtain ⟨xs, hli, hmem, _⟩ := Module.End.exists_linearIndependent_eigenvectors (T := T)
   have hli_w : LinearIndependent 𝕜
       (fun μ : {μ // Module.End.HasEigenvalue T μ ∧ μ ≠ 0} ↦
         (⟨xs μ, hmem μ⟩ : LinearMap.range T)) := by
@@ -135,7 +136,7 @@ theorem Module.End.ncard_nonzero_hasEigenvalue_le_finrank_range
     Set.finite_coe_iff.mpr hfin
   have hFintypeSub : Fintype {μ // Module.End.HasEigenvalue T μ ∧ μ ≠ 0} :=
     Fintype.ofFinite _
-  obtain ⟨xs, hli, hmem⟩ := Module.End.exists_linearIndependent_eigenvectors (T := T)
+  obtain ⟨xs, hli, hmem, _⟩ := Module.End.exists_linearIndependent_eigenvectors (T := T)
   have hli_w : LinearIndependent 𝕜
       (fun μ : {μ // Module.End.HasEigenvalue T μ ∧ μ ≠ 0} ↦
         (⟨xs μ, hmem μ⟩ : LinearMap.range T)) := by
