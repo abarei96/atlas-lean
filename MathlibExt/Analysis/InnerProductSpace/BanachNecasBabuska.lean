@@ -13,9 +13,10 @@ public import Mathlib.Analysis.InnerProductSpace.Projection.Submodule
 public import Mathlib.Analysis.Normed.Operator.Banach
 
 /-!
-# The Banach–Nečas–Babuška theorem for Hilbert spaces
+# The Banach–Nečas–Babuška theorem with Banach trial and Hilbert test spaces
 
-Let `E` and `F` be real Hilbert spaces and let `B : E →L[ℝ] F →L[ℝ] ℝ` be a bounded
+Let `E` be a real Banach trial space and `F` a real Hilbert test space,
+and let `B : E →L[ℝ] F →L[ℝ] ℝ` be a bounded
 bilinear form, written `B x y` for the value at `(x, y)`. The
 **Banach–Nečas–Babuška theorem** says that `B` induces an isomorphism
 `E ≃L[ℝ] (F →L[ℝ] ℝ)` as soon as it satisfies two conditions:
@@ -34,19 +35,20 @@ particular, no symmetry or coercivity is assumed here: the result applies to the
 mixed (saddle-point) variational problems of finite-element theory, e.g. the
 Stokes problem, where coercivity fails.
 
-The statement is for Hilbert spaces. The Banach-space form of the theorem needs
-the spaces to be reflexive: the nondegeneracy hypothesis only kills the
-annihilator of the range inside the image of the canonical embedding `F → F''`,
-and a closed proper subspace of `F'` can be weak-* dense (e.g. `c₀ ⊂ ℓ∞`) without
-being all of `F'`. In a Hilbert space the orthogonal-complement argument closes
-this gap.
+This formalization allows any real Banach trial space `E` and keeps the test
+space `F` Hilbert. In the general Banach formulation the reflexivity condition
+concerns `F`, not `E`: nondegeneracy only kills the annihilator of the range
+inside the image of the canonical embedding `F → F''`, and a closed proper
+subspace of `F'` can be weak-* dense (e.g. `c₀ ⊂ ℓ∞`) without being all of `F'`.
+The Hilbert structure on `F` lets the orthogonal-complement argument close this
+gap. The initial dual-norm and hypothesis APIs need only real normed spaces.
 
 The proof follows the Lax–Milgram pattern. Writing `T : E →L[ℝ] F` for the
 operator `bilinearFormSharp B` with `⟪T x, y⟫ = B x y` (the two-space analogue of
 Mathlib's `continuousLinearMapOfBilin`), the inf–sup condition says `T` is bounded
 below, hence injective with closed range; nondegeneracy says the orthogonal
 complement of the range is trivial, hence the range is everything; and a
-bijective bounded operator between Hilbert spaces is a continuous equivalence.
+bijective bounded operator from a Banach space to a Hilbert space is a continuous equivalence.
 
 Main results:
 
@@ -63,6 +65,13 @@ Main results:
   problem `B x y = φ y` for all `y` has a unique solution, with the stability
   bound `‖x‖ ≤ β⁻¹ * ‖φ‖`.
 
+This is a companion to the Hilbert-space and bounded-operator material of
+`v1/Atlas/IntroductionToFunctionalAnalysis/code/HilbertSpace.lean` and
+`BoundedOperators.lean`. It is not a numbered v1 target and ports no v1 proof
+hole. The references identify the mathematical context; this development does
+not claim a literal textbook transcription or a full saddle-point block or
+Galerkin error theorem.
+
 References: I. Babuška, "Error bounds for finite element method",
 *Numerische Mathematik* 16 (1971), 322–333; J. Nečas, "Sur une méthode pour
 résoudre les équations aux dérivées partielles du type elliptique, voisine de
@@ -77,8 +86,12 @@ open scoped InnerProductSpace NNReal
 
 namespace MathlibExt.Analysis.InnerProductSpace.BanachNecasBabuska
 
-variable {E F : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E]
-  [NormedAddCommGroup F] [InnerProductSpace ℝ F]
+variable {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+  [NormedAddCommGroup F]
+
+section Normed
+
+variable [NormedSpace ℝ F]
 
 /-- The **inf–sup condition**: there is `β > 0` such that
 `β * ‖x‖ ≤ ‖B x‖` for every `x`. The right-hand side is the dual norm of the
@@ -140,6 +153,10 @@ theorem isInfSup_iff (B : E →L[ℝ] F →L[ℝ] ℝ) :
     exact ⟨β, hβ, fun x => by rw [← norm_apply_eq_iSup B x]; exact hB x⟩
   · rintro ⟨β, hβ, hB⟩
     exact ⟨β, hβ, fun x => by rw [norm_apply_eq_iSup B x]; exact hB x⟩
+
+end Normed
+
+variable [InnerProductSpace ℝ F]
 
 variable [CompleteSpace E] [CompleteSpace F]
 
