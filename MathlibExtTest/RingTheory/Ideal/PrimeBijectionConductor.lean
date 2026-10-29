@@ -16,7 +16,7 @@ public import MathlibExt.RingTheory.Ideal.PrimeBijectionConductor
 
 namespace PrimeBijectionConductorTest
 
-/-- Conductor `𝔠 = span {6}` in `ℤ`, identity algebra: the comaximality
+/-- Denominator-clearing ideal `𝔠 = span {6}` in `ℤ`, identity algebra: the comaximality
 hypothesis holds because every nonzero prime of `ℤ` is maximal. -/
 noncomputable def equivSix : {𝔮 : Ideal ℤ // 𝔮.IsPrime ∧ 𝔮 ≠ ⊥ ∧
     ¬ ((Ideal.span {(6 : ℤ)}).map (algebraMap ℤ ℤ) ≤ 𝔮)} ≃
@@ -67,5 +67,51 @@ example : (Ideal.span {(6 : ℤ)}).map (algebraMap ℤ ℤ) ≤
 /-- Round trip: applying the equivalence and its inverse returns `(5)`. -/
 example : equivSix.symm (equivSix primeFiveDomain) = primeFiveDomain :=
   Equiv.symm_apply_apply _ _
+
+/-- The full spectra away from `(6)`, including their generic points. -/
+noncomputable def allEquivSix : {𝔮 : Ideal ℤ // 𝔮.IsPrime ∧
+    ¬ ((Ideal.span {(6 : ℤ)}).map (algebraMap ℤ ℤ) ≤ 𝔮)} ≃
+    {𝔭 : Ideal ℤ // 𝔭.IsPrime ∧ ¬ Ideal.span {(6 : ℤ)} ≤ 𝔭} :=
+  Ideal.primeEquivOfNotLeConductor (by simpa using Function.injective_id)
+    (Ideal.span {(6 : ℤ)})
+    (by rw [ne_eq, Ideal.span_singleton_eq_bot]; norm_num)
+    (fun c _ b => ⟨c * b, rfl⟩)
+    (fun 𝔭 h𝔭 hne hnc => by
+      have hne' : 𝔭 ≠ Ideal.span {(6 : ℤ)} ⊔ 𝔭 := fun h =>
+        hnc (h ▸ le_sup_left)
+      exact (Ideal.isMaximal_def.1 (h𝔭.isMaximal hne)).2 _
+        (lt_of_le_of_ne le_sup_right hne'))
+
+/-- The generic point of `Spec ℤ` does not contain `(6)`. -/
+def primeZeroDomain : {𝔮 : Ideal ℤ // 𝔮.IsPrime ∧
+    ¬ (Ideal.span {(6 : ℤ)}).map (algebraMap ℤ ℤ) ≤ 𝔮} := by
+  refine ⟨⊥, inferInstance, ?_⟩
+  rw [show algebraMap ℤ ℤ = RingHom.id ℤ from rfl, Ideal.map_id,
+    Ideal.span_singleton_le_iff_mem, Ideal.mem_bot]
+  norm_num
+
+/-- The same generic point in the target spectrum away from `(6)`. -/
+def primeZeroCodomain : {𝔭 : Ideal ℤ // 𝔭.IsPrime ∧
+    ¬ Ideal.span {(6 : ℤ)} ≤ 𝔭} := by
+  refine ⟨⊥, inferInstance, ?_⟩
+  rw [Ideal.span_singleton_le_iff_mem, Ideal.mem_bot]
+  norm_num
+
+/-- Contraction in the all-prime equivalence retains the generic point. -/
+example : (allEquivSix primeZeroDomain).1 = ⊥ := by
+  calc
+    (allEquivSix primeZeroDomain).1 =
+        primeZeroDomain.1.comap (algebraMap ℤ ℤ) :=
+      Ideal.primeEquivOfNotLeConductor_apply _ _ _ _ _ _
+    _ = ⊥ := Ideal.comap_bot_of_injective (algebraMap ℤ ℤ)
+      (by simpa using Function.injective_id)
+
+/-- Extension in the all-prime equivalence retains the generic point. -/
+example : (allEquivSix.symm primeZeroCodomain).1 = ⊥ := by
+  calc
+    (allEquivSix.symm primeZeroCodomain).1 =
+        primeZeroCodomain.1.map (algebraMap ℤ ℤ) :=
+      Ideal.primeEquivOfNotLeConductor_symm_apply _ _ _ _ _ _
+    _ = ⊥ := Ideal.map_bot (f := algebraMap ℤ ℤ)
 
 end PrimeBijectionConductorTest

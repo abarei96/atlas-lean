@@ -20,8 +20,9 @@ Dedekind domain, and let `𝔠 : Ideal O` be an ideal whose elements clear
 denominators uniformly (`algebraMap O B c * b` is in the range of
 `algebraMap O B` for all `b : B`), nonzero, and comaximal with every nonzero
 prime of `O` it is not contained in. Then contraction and extension give an
-equivalence between the nonzero primes of `B` not containing `𝔠.map f` and
-the nonzero primes of `O` not containing `𝔠`.
+equivalence between all primes of `B` not containing `𝔠.map f` and all primes
+of `O` not containing `𝔠`, including the zero prime. The equivalence on
+nonzero primes is its restriction.
 
 This is ATLAS `NumberTheoryI` Corollary 6.27: for an order `O` with integral
 closure `B` and conductor `𝔠`, the restriction of `Spec B → Spec O` to prime
@@ -154,9 +155,74 @@ lemma map_comap_eq_of_not_le_map_conductor
     exact h𝔭_ne
   exact (Ring.DimensionLeOne.prime_le_prime_iff_eq hP0).mp Ideal.map_comap_le
 
+/-- Contraction and extension give an equivalence between all primes of `B`
+not containing `𝔠.map (algebraMap O B)` and all primes of `O` not containing
+`𝔠`, including the zero prime on both sides. This restores the full spectra
+in ATLAS `NumberTheoryI` Corollary 6.27. -/
+noncomputable def primeEquivOfNotLeConductor
+    {O B : Type*} [CommRing O] [CommRing B] [IsDedekindDomain B] [Algebra O B]
+    (hf : Function.Injective (algebraMap O B))
+    (𝔠 : Ideal O) (h𝔠_ne : 𝔠 ≠ ⊥)
+    (hclear : ∀ c ∈ 𝔠, ∀ b : B,
+      algebraMap O B c * b ∈ Set.range (algebraMap O B))
+    (hsup : ∀ (𝔭 : Ideal O), 𝔭.IsPrime → 𝔭 ≠ ⊥ → ¬ 𝔠 ≤ 𝔭 → 𝔠 ⊔ 𝔭 = ⊤) :
+    {𝔮 : Ideal B // 𝔮.IsPrime ∧ ¬ (𝔠.map (algebraMap O B) ≤ 𝔮)} ≃
+      {𝔭 : Ideal O // 𝔭.IsPrime ∧ ¬ 𝔠 ≤ 𝔭} := by
+  classical
+  exact
+    { toFun := fun 𝔮 =>
+        ⟨𝔮.1.comap (algebraMap O B), 𝔮.2.1.comap (algebraMap O B),
+          fun h => 𝔮.2.2 (Ideal.map_le_of_le_comap h)⟩
+      invFun := fun 𝔭 =>
+        ⟨𝔭.1.map (algebraMap O B), (by
+          by_cases h𝔭_bot : 𝔭.1 = ⊥
+          · rw [h𝔭_bot, Ideal.map_bot]
+            infer_instance
+          · exact Ideal.isPrime_map_of_coprime_clearDenom _ _ 𝔭.2.1 hf hclear
+              (hsup 𝔭.1 𝔭.2.1 h𝔭_bot 𝔭.2.2)), (by
+          rw [Ideal.map_le_iff_le_comap,
+            comap_map_eq_of_not_le_conductor hf hclear 𝔭.2.1 𝔭.2.2]
+          exact 𝔭.2.2)⟩
+      left_inv := fun 𝔮 => Subtype.ext (by
+        change Ideal.map (algebraMap O B) (Ideal.comap (algebraMap O B) 𝔮.1) = 𝔮.1
+        by_cases h𝔮_bot : 𝔮.1 = ⊥
+        · rw [h𝔮_bot]
+          exact Ideal.map_comap_bot (f := algebraMap O B)
+        · exact map_comap_eq_of_not_le_map_conductor hf hclear h𝔠_ne hsup
+            𝔮.2.1 h𝔮_bot 𝔮.2.2)
+      right_inv := fun 𝔭 =>
+        Subtype.ext (comap_map_eq_of_not_le_conductor hf hclear 𝔭.2.1 𝔭.2.2) }
+
+@[simp]
+theorem primeEquivOfNotLeConductor_apply
+    {O B : Type*} [CommRing O] [CommRing B] [IsDedekindDomain B] [Algebra O B]
+    (hf : Function.Injective (algebraMap O B))
+    (𝔠 : Ideal O) (h𝔠_ne : 𝔠 ≠ ⊥)
+    (hclear : ∀ c ∈ 𝔠, ∀ b : B,
+      algebraMap O B c * b ∈ Set.range (algebraMap O B))
+    (hsup : ∀ (𝔭 : Ideal O), 𝔭.IsPrime → 𝔭 ≠ ⊥ → ¬ 𝔠 ≤ 𝔭 → 𝔠 ⊔ 𝔭 = ⊤)
+    (𝔮 : {𝔮 : Ideal B // 𝔮.IsPrime ∧ ¬ (𝔠.map (algebraMap O B) ≤ 𝔮)}) :
+    (primeEquivOfNotLeConductor hf 𝔠 h𝔠_ne hclear hsup 𝔮).1 =
+      𝔮.1.comap (algebraMap O B) := by
+  rfl
+
+@[simp]
+theorem primeEquivOfNotLeConductor_symm_apply
+    {O B : Type*} [CommRing O] [CommRing B] [IsDedekindDomain B] [Algebra O B]
+    (hf : Function.Injective (algebraMap O B))
+    (𝔠 : Ideal O) (h𝔠_ne : 𝔠 ≠ ⊥)
+    (hclear : ∀ c ∈ 𝔠, ∀ b : B,
+      algebraMap O B c * b ∈ Set.range (algebraMap O B))
+    (hsup : ∀ (𝔭 : Ideal O), 𝔭.IsPrime → 𝔭 ≠ ⊥ → ¬ 𝔠 ≤ 𝔭 → 𝔠 ⊔ 𝔭 = ⊤)
+    (𝔭 : {𝔭 : Ideal O // 𝔭.IsPrime ∧ ¬ 𝔠 ≤ 𝔭}) :
+    ((primeEquivOfNotLeConductor hf 𝔠 h𝔠_ne hclear hsup).symm 𝔭).1 =
+      𝔭.1.map (algebraMap O B) := by
+  rfl
+
 /-- Contraction and extension give an equivalence between the nonzero primes
 of `B` not containing `𝔠.map (algebraMap O B)` and the nonzero primes of `O`
-not containing `𝔠`. -/
+not containing `𝔠`. This is the restriction of
+`Ideal.primeEquivOfNotLeConductor` to nonzero prime ideals. -/
 noncomputable def primeEquivOfCoprimeConductor
     {O B : Type*} [CommRing O] [CommRing B] [IsDedekindDomain B] [Algebra O B]
     (hf : Function.Injective (algebraMap O B))
@@ -166,6 +232,7 @@ noncomputable def primeEquivOfCoprimeConductor
     (hsup : ∀ (𝔭 : Ideal O), 𝔭.IsPrime → 𝔭 ≠ ⊥ → ¬ 𝔠 ≤ 𝔭 → 𝔠 ⊔ 𝔭 = ⊤) :
     {𝔮 : Ideal B // 𝔮.IsPrime ∧ 𝔮 ≠ ⊥ ∧ ¬ (𝔠.map (algebraMap O B) ≤ 𝔮)} ≃
       {𝔭 : Ideal O // 𝔭.IsPrime ∧ 𝔭 ≠ ⊥ ∧ ¬ 𝔠 ≤ 𝔭} :=
+  let e := primeEquivOfNotLeConductor hf 𝔠 h𝔠_ne hclear hsup
   { toFun := fun 𝔮 =>
       ⟨𝔮.1.comap (algebraMap O B), 𝔮.2.1.comap (algebraMap O B),
         comap_ne_bot_of_ne_bot hf hclear h𝔠_ne 𝔮.2.2.1,
@@ -180,10 +247,12 @@ noncomputable def primeEquivOfCoprimeConductor
             comap_map_eq_of_not_le_conductor hf hclear 𝔭.2.1 𝔭.2.2.2]
           exact 𝔭.2.2.2)⟩
     left_inv := fun 𝔮 =>
-      Subtype.ext (map_comap_eq_of_not_le_map_conductor hf hclear h𝔠_ne hsup
-        𝔮.2.1 𝔮.2.2.1 𝔮.2.2.2)
+      Subtype.ext (congrArg
+        (fun (𝔮 : {𝔮 : Ideal B // 𝔮.IsPrime ∧ ¬ 𝔠.map (algebraMap O B) ≤ 𝔮}) => 𝔮.1)
+        (e.symm_apply_apply ⟨𝔮.1, 𝔮.2.1, 𝔮.2.2.2⟩))
     right_inv := fun 𝔭 =>
-      Subtype.ext (comap_map_eq_of_not_le_conductor hf hclear 𝔭.2.1 𝔭.2.2.2) }
+      Subtype.ext (congrArg (fun (𝔭 : {𝔭 : Ideal O // 𝔭.IsPrime ∧ ¬ 𝔠 ≤ 𝔭}) => 𝔭.1)
+        (e.apply_symm_apply ⟨𝔭.1, 𝔭.2.1, 𝔭.2.2.2⟩)) }
 
 @[simp]
 theorem primeEquivOfCoprimeConductor_apply
