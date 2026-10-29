@@ -20,60 +20,61 @@ public import Mathlib.Order.Filter.AtTopBot.Floor
 /-!
 # Local De Moivre–Laplace limit theorem (`p = 1/2`)
 
-For a fair-coin random walk, the point mass `P(Sₙ = k)` is asymptotically
-equivalent to the Gaussian density approximation
-`√(2/(πn)) · exp(-(k - n/2)²/(n/2))` along the lattice sequence
-`k = ⌊n/2 + x√n/2⌋`, for any fixed `x ∈ ℝ`. In particular the ratio of the
-binomial point mass to its Gaussian approximation tends to `1`.
+For a fair-coin binomial variable with `mₙ` trials, any success-index sequence `jₙ` with
+`mₙ → ∞` and `(2jₙ - mₙ)/√mₙ → x` has point mass asymptotically equivalent to
+`√(2/(πmₙ)) · exp(-x²/2)`. In random-walk coordinates this gives the local limit for every
+integer displacement sequence `kₙ` satisfying `2kₙ/√(2n) → x`, with the Gaussian evaluated at
+the fixed limit `x`. The rounded lattice sequence remains a corollary.
 
 ## Source
 
-This formalizes the target "Theorem (Local p=1/2 DeMoivre-Laplace limit
-theorem)" (Lecture 12) of `v1/Atlas/TheoryOfProbability/targets.yaml`:
+This formalizes the target "Theorem (Local p=1/2 DeMoivre-Laplace limit theorem)" (Lecture 12)
+of `v1/Atlas/TheoryOfProbability/targets.yaml`:
 "If `2k/√(2n) → x` then `P(S_{2n} = 2k) ∼ (πn)^{-1/2} e^{-x²/2}`."
-Its v1 formalization is
-`v1/Atlas/TheoryOfProbability/code/LocalDeMoivreLaplace.lean`
-(`local_deMoivreLaplace_half`), whose proof is ported here.
+The Stirling and entropy proof was ported from
+`v1/Atlas/TheoryOfProbability/code/LocalDeMoivreLaplace.lean`. That v1 declaration
+`local_deMoivreLaplace_half` treated the rounded success indices
+`⌊n/2 + x√n/2⌋`. Here the same estimates are extended to arbitrary convergent standardized
+sequences, recovering the full quantification of the English source target.
 
-The v1 statement is the sequence form of the book's theorem: writing
-`binomProbHalf n k = C(n, k) / 2ⁿ` for the binomial point mass and
-`gaussianApproxHalf n k = √(2/(πn)) · exp(-(k - n/2)²/(n/2))`, it says
-`binomProbHalf n kₙ / gaussianApproxHalf n kₙ → 1` for
-`kₙ = ⌊n/2 + x√n/2⌋`. The book's `S_{2n}` form is the same statement
-re-indexed: `binomProbHalf (2n) (n + k) = P(S_{2n} = 2k)` and
-`gaussianApproxHalf (2n) (n + k) = (πn)^{-1/2} · exp(-k²/n)`. The book's
-quantification over *every* `k` with `2k/√(2n) → x` is not claimed here;
-the theorem is proved for the natural lattice sequence `kₙ` above.
+The coordinates differ between a binomial success count and a random-walk displacement:
+`binomProbHalf (2n) (n + k) = P(S_{2n} = 2k)` whenever `n + k` is a valid success index.
+Its moving Gaussian is `(√(πn))⁻¹ · exp(-k²/n)`. The scaling limit implies eventual lattice
+admissibility and `k²/n → x²/2`, so the final equivalent expression is
+`(√(πn))⁻¹ · exp(-x²/2)`. The integer statement uses `(n + kₙ).toNat`; no restriction to the
+canonical rounded sequence is imposed.
 
 ## Relation to Mathlib
 
-Mathlib has Stirling's formula (`Stirling.tendsto_stirlingSeq_sqrt_pi`)
-and the global De Moivre–Laplace theorem (via the central limit theorem),
-but no local limit theorem for the binomial point mass; a search for
-`local` limit / `IsEquivalent` binomial–Gaussian statements in Mathlib
-finds nothing. The proof below is therefore new content, ported from v1.
+The proof uses Mathlib's Stirling formula (`Stirling.tendsto_stirlingSeq_sqrt_pi`) and standard
+asymptotic-equivalence and continuity APIs. A search of the pinned Mathlib declarations for
+binomial `Nat.choose` asymptotic equivalence finds the fixed-success-count estimate
+`isEquivalent_choose`, which has a different regime; no matching local point-mass theorem
+was found. The local entropy and binomial estimates below come from the v1 proof.
 
 ## Main results
 
-* `ProbabilityTheory.binomProbHalf`: the point mass `C(n, k) / 2ⁿ`.
-* `ProbabilityTheory.gaussianApproxHalf`: the Gaussian approximation
+* `ProbabilityTheory.binomProbHalf`: the binomial point mass `C(n, k) / 2ⁿ`.
+* `ProbabilityTheory.gaussianApproxHalf`: the moving Gaussian approximation
   `√(2/(πn)) · exp(-(k - n/2)²/(n/2))`.
-* `ProbabilityTheory.localDMLIndex`: the lattice index `⌊n/2 + x√n/2⌋`.
-* `ProbabilityTheory.binomProbHalf_isEquivalent_gaussianApproxHalf`:
-  the point mass is asymptotically equivalent to its Gaussian approximation
-  along `localDMLIndex x`.
-* `ProbabilityTheory.local_deMoivreLaplace_half`: the ratio
-  `binomProbHalf n kₙ / gaussianApproxHalf n kₙ` tends to `1`.
+* `ProbabilityTheory.binomProbHalf_isEquivalent_fixedGaussian`: the arbitrary success-index
+  sequence theorem, with the Gaussian evaluated at the fixed standardized limit.
+* `ProbabilityTheory.local_deMoivreLaplace_half_of_tendsto`: the source's arbitrary integer
+  random-walk displacement theorem, with equivalent expression `(√(πn))⁻¹ · exp(-x²/2)`.
+* `ProbabilityTheory.localDMLIndex_standardized_tendsto`: the rounded sequence satisfies the
+  required standardized scaling limit.
+* `ProbabilityTheory.binomProbHalf_isEquivalent_gaussianApproxHalf` and
+  `ProbabilityTheory.local_deMoivreLaplace_half`: the original rounded-sequence corollaries.
 
 ## Proof outline
 
-Stirling's formula rewrites the binomial ratio as a product of a
-Stirling-sequence factor, a square-root factor, a power factor, and an
-exponential correction. The Stirling and square-root factors tend to `1`
-by `Stirling.tendsto_stirlingSeq_sqrt_pi` and `kₙ/n → 1/2`; the power
-factor times the exponential correction tends to `1` by a third-order
-Taylor bound on the symmetric entropy function
-`(1+u) log(1+u) + (1-u) log(1-u) - u²` with `u = (2kₙ - n)/n = O(1/√n)`.
+Convergence of `zₙ = (2jₙ - mₙ)/√mₙ` bounds `zₙ` eventually, giving `jₙ/mₙ → 1/2` and both
+factorial indices tending to infinity. Stirling's formula rewrites the binomial/Gaussian ratio
+as a Stirling-sequence factor, a square-root factor, and a power factor with an exponential
+correction. For `uₙ = (2jₙ - mₙ)/mₙ`, the existing third-order symmetric-entropy remainder bound
+gives a logarithmic error bounded by `3(|x| + 1)³/√mₙ`, which tends to zero. The ratio therefore
+tends to `1`. Finally continuity of `exp` and `zₙ²/2 → x²/2` replaces the moving Gaussian
+exponent with its fixed limiting value.
 -/
 
 
@@ -85,7 +86,7 @@ noncomputable section
 
 namespace ProbabilityTheory
 
-/-- The point mass `P(S_n = k) = C(n,k) / 2ⁿ` for a `Binomial(n, 1/2)` random variable `S_n`. -/
+/-- The point mass `P(B_n = k) = C(n,k) / 2ⁿ` for a `Binomial(n, 1/2)` success count `B_n`. -/
 def binomProbHalf (n k : ℕ) : ℝ :=
   (Nat.choose n k : ℝ) / (2 : ℝ) ^ n
 
@@ -436,6 +437,321 @@ lemma log_power_factor_formula (n k : ℕ) (hk : 0 < k) (hkn : k < n) :
   rw [hnu2]; field_simp
   linear_combination (2 * (↑n : ℝ) * Real.log 2 - 2 * (↑n : ℝ) * Real.log (↑n : ℝ)) * hkn_cast
 
+private lemma dml_index_ratio_half {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    Tendsto (fun n => (j n : ℝ) / (m n : ℝ)) atTop (𝓝 (1 / 2)) := by
+  have hsqrt : Tendsto (fun n => Real.sqrt (m n : ℝ)) atTop atTop :=
+    tendsto_sqrt_atTop.comp (tendsto_natCast_atTop_atTop.comp hm)
+  have hsmall := hz.div_atTop (hsqrt.const_mul_atTop (by norm_num : (0 : ℝ) < 2))
+  have heq : ∀ᶠ n in atTop, (j n : ℝ) / (m n : ℝ) =
+      1 / 2 + ((2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ)) /
+        (2 * Real.sqrt (m n : ℝ)) := by
+    filter_upwards [hm.eventually (eventually_gt_atTop 0)] with n hn
+    have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hn
+    have hprod : Real.sqrt (m n : ℝ) * (2 * Real.sqrt (m n : ℝ)) =
+        2 * (m n : ℝ) := by nlinarith [Real.sq_sqrt hn_pos.le]
+    rw [div_div, hprod]
+    field_simp
+    ring
+  apply (tendsto_congr' heq).mpr
+  simpa using (tendsto_const_nhds (x := (1 : ℝ) / 2)).add hsmall
+
+private lemma dml_index_tendsto_atTop {m j : ℕ → ℕ}
+    (hm : Tendsto m atTop atTop)
+    (hratio : Tendsto (fun n => (j n : ℝ) / (m n : ℝ)) atTop (𝓝 (1 / 2))) :
+    Tendsto j atTop atTop := by
+  apply tendsto_atTop.mpr
+  intro b
+  filter_upwards [hratio.eventually (lt_mem_nhds (by norm_num : (1 : ℝ) / 4 < 1 / 2)),
+    hm.eventually (eventually_ge_atTop (4 * b + 1))] with n hr hn
+  have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast (by omega : 0 < m n)
+  have hj : (1 : ℝ) / 4 * (m n : ℝ) < (j n : ℝ) := (lt_div_iff₀ hn_pos).mp hr
+  have hn_cast : (4 : ℝ) * (b : ℝ) + 1 ≤ (m n : ℝ) := by exact_mod_cast hn
+  have : (b : ℝ) ≤ (j n : ℝ) := by linarith
+  exact_mod_cast this
+
+private lemma dml_complement_ratio_half {m j : ℕ → ℕ}
+    (hm : Tendsto m atTop atTop)
+    (hratio : Tendsto (fun n => (j n : ℝ) / (m n : ℝ)) atTop (𝓝 (1 / 2))) :
+    Tendsto (fun n => ((m n - j n : ℕ) : ℝ) / (m n : ℝ)) atTop (𝓝 (1 / 2)) := by
+  have hle : ∀ᶠ n in atTop, j n ≤ m n := by
+    filter_upwards [hratio.eventually (gt_mem_nhds (by norm_num : (1 : ℝ) / 2 < 1)),
+      hm.eventually (eventually_gt_atTop 0)] with n hr hn
+    have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hn
+    have hj : (j n : ℝ) < (m n : ℝ) := by simpa using (div_lt_iff₀ hn_pos).mp hr
+    exact (by exact_mod_cast hj : j n < m n).le
+  have heq : ∀ᶠ n in atTop, ((m n - j n : ℕ) : ℝ) / (m n : ℝ) =
+      1 - (j n : ℝ) / (m n : ℝ) := by
+    filter_upwards [hle, hm.eventually (eventually_gt_atTop 0)] with n hj hn
+    rw [Nat.cast_sub hj]
+    field_simp
+  apply (tendsto_congr' heq).mpr
+  simpa only [show (1 : ℝ) - 1 / 2 = 1 / 2 from by ring] using
+    (tendsto_const_nhds (x := (1 : ℝ))).sub hratio
+
+private lemma dml_log_power_factor_tendsto_zero {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    Tendsto (fun n =>
+      Real.log ((m n : ℝ) ^ m n / ((j n : ℝ) ^ j n *
+        ((m n - j n : ℕ) : ℝ) ^ (m n - j n) * 2 ^ m n)) +
+      ((j n : ℝ) - (m n : ℝ) / 2) ^ 2 / ((m n : ℝ) / 2))
+      atTop (𝓝 0) := by
+  have hratio := dml_index_ratio_half hm hz
+  have hj := dml_index_tendsto_atTop hm hratio
+  have hcomp := dml_index_tendsto_atTop hm (dml_complement_ratio_half hm hratio)
+  have hsqrt : Tendsto (fun n => Real.sqrt (m n : ℝ)) atTop atTop :=
+    tendsto_sqrt_atTop.comp (tendsto_natCast_atTop_atTop.comp hm)
+  have hbound : ∀ᶠ n in atTop,
+      |(2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ)| ≤ |x| + 1 :=
+    (hz.abs.eventually (gt_mem_nhds (by linarith : |x| < |x| + 1))).mono
+      (fun _ h => h.le)
+  refine @squeeze_zero_norm' ℕ ℝ _ _ (fun n => 3 * (|x| + 1) ^ 3 /
+    Real.sqrt (m n : ℝ)) atTop ?_ (tendsto_const_nhds.div_atTop hsqrt)
+  filter_upwards [hj.eventually (eventually_gt_atTop 0),
+    hcomp.eventually (eventually_gt_atTop 0), hm.eventually (eventually_gt_atTop 0),
+    hbound, hsqrt.eventually (eventually_gt_atTop (2 * (|x| + 1)))]
+      with n hjn hcn hmn hbn hlarge
+  have hjm : j n < m n := by omega
+  have hm_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hmn
+  have hs_pos : (0 : ℝ) < Real.sqrt (m n : ℝ) := Real.sqrt_pos.mpr hm_pos
+  have hsq := Real.sq_sqrt hm_pos.le
+  rw [log_power_factor_formula (m n) (j n) hjn hjm]
+  set u := (2 * (j n : ℝ) - (m n : ℝ)) / (m n : ℝ)
+  have hu_bound : |u| ≤ (|x| + 1) / Real.sqrt (m n : ℝ) := by
+    have heq : u = ((2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ)) /
+        Real.sqrt (m n : ℝ) := by
+      rw [div_div, Real.mul_self_sqrt hm_pos.le]
+    rw [heq, abs_div, abs_of_pos hs_pos]
+    exact div_le_div_of_nonneg_right hbn hs_pos.le
+  have hu_half : |u| < 1 / 2 := by
+    have hsmall : (|x| + 1) / Real.sqrt (m n : ℝ) < 1 / 2 := by
+      rw [div_lt_iff₀ hs_pos]
+      linarith
+    exact hu_bound.trans_lt hsmall
+  have hent := entropy_residual_bound hu_half
+  simp only [Real.norm_eq_abs, abs_mul, abs_neg,
+    abs_of_pos (by positivity : (m n : ℝ) / 2 > 0)]
+  calc (m n : ℝ) / 2 * |(1 + u) * Real.log (1 + u) +
+      (1 - u) * Real.log (1 - u) - u ^ 2|
+      ≤ (m n : ℝ) / 2 * (6 * |u| ^ 3) := by gcongr
+    _ ≤ (m n : ℝ) / 2 * (6 * (((|x| + 1) / Real.sqrt (m n : ℝ)) ^ 3)) := by
+      gcongr
+    _ = 3 * (|x| + 1) ^ 3 / Real.sqrt (m n : ℝ) := by
+      rw [div_pow]
+      field_simp
+      nlinarith [hsq]
+
+private lemma dml_power_factor_tendsto_one_of_scale {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    Tendsto (fun n =>
+      ((m n : ℝ) ^ m n / ((j n : ℝ) ^ j n *
+        ((m n - j n : ℕ) : ℝ) ^ (m n - j n) * 2 ^ m n)) *
+      Real.exp (((j n : ℝ) - (m n : ℝ) / 2) ^ 2 / ((m n : ℝ) / 2)))
+      atTop (𝓝 1) := by
+  have hratio := dml_index_ratio_half hm hz
+  have hj := dml_index_tendsto_atTop hm hratio
+  have hcomp := dml_index_tendsto_atTop hm (dml_complement_ratio_half hm hratio)
+  have hexp := Real.tendsto_exp_nhds_zero_nhds_one.comp
+    (dml_log_power_factor_tendsto_zero hm hz)
+  apply hexp.congr'
+  filter_upwards [hm.eventually (eventually_gt_atTop 0),
+    hj.eventually (eventually_gt_atTop 0), hcomp.eventually (eventually_gt_atTop 0)]
+      with n hmn hjn hcn
+  simp only [Function.comp_def]
+  exact (Real.exp_add _ _).trans (by rw [Real.exp_log (by positivity)])
+
+private lemma dml_binom_gaussian_ratio_tendsto_one {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    Tendsto (fun n => binomProbHalf (m n) (j n) / gaussianApproxHalf (m n) (j n))
+      atTop (𝓝 1) := by
+  have hratio := dml_index_ratio_half hm hz
+  have hcomp_ratio := dml_complement_ratio_half hm hratio
+  have hj := dml_index_tendsto_atTop hm hratio
+  have hcomp := dml_index_tendsto_atTop hm hcomp_ratio
+  have hstir : Tendsto (fun n => Stirling.stirlingSeq (m n) /
+      (Stirling.stirlingSeq (j n) * Stirling.stirlingSeq (m n - j n)))
+      atTop (𝓝 (Real.sqrt Real.pi / (Real.sqrt Real.pi * Real.sqrt Real.pi))) := by
+    apply Filter.Tendsto.div
+    · exact Stirling.tendsto_stirlingSeq_sqrt_pi.comp hm
+    · exact (Stirling.tendsto_stirlingSeq_sqrt_pi.comp hj).mul
+        (Stirling.tendsto_stirlingSeq_sqrt_pi.comp hcomp)
+    · exact mul_ne_zero (Real.sqrt_ne_zero'.mpr Real.pi_pos)
+        (Real.sqrt_ne_zero'.mpr Real.pi_pos)
+  have hsqrt : Tendsto (fun n => Real.sqrt (Real.pi * (m n : ℝ) ^ 2 /
+      (4 * (j n : ℝ) * ((m n - j n : ℕ) : ℝ)))) atTop (𝓝 (Real.sqrt Real.pi)) := by
+    apply Tendsto.sqrt
+    have heq : ∀ᶠ n in atTop, Real.pi * (m n : ℝ) ^ 2 /
+        (4 * (j n : ℝ) * ((m n - j n : ℕ) : ℝ)) =
+        Real.pi / (4 * ((j n : ℝ) / (m n : ℝ)) *
+          (((m n - j n : ℕ) : ℝ) / (m n : ℝ))) := by
+      filter_upwards [hm.eventually (eventually_gt_atTop 0),
+        hj.eventually (eventually_gt_atTop 0), hcomp.eventually (eventually_gt_atTop 0)]
+          with n hmn hjn hcn
+      have hm_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hmn
+      have hj_pos : (0 : ℝ) < (j n : ℝ) := by exact_mod_cast hjn
+      have hc_pos : (0 : ℝ) < ((m n - j n : ℕ) : ℝ) := by exact_mod_cast hcn
+      field_simp
+    apply (tendsto_congr' heq).mpr
+    have hdenom : Tendsto (fun n => 4 * ((j n : ℝ) / (m n : ℝ)) *
+        (((m n - j n : ℕ) : ℝ) / (m n : ℝ))) atTop (𝓝 1) := by
+      have h := ((tendsto_const_nhds (x := (4 : ℝ))).mul hratio).mul hcomp_ratio
+      simpa only [show (4 : ℝ) * (1 / 2) * (1 / 2) = 1 from by ring] using h
+    have h : Tendsto (fun n => Real.pi / (4 * ((j n : ℝ) / (m n : ℝ)) *
+        (((m n - j n : ℕ) : ℝ) / (m n : ℝ)))) atTop (𝓝 (Real.pi / 1)) :=
+      tendsto_const_nhds.div hdenom (by norm_num)
+    rwa [div_one] at h
+  have hprod := hstir.mul hsqrt
+  have hlim : Real.sqrt Real.pi / (Real.sqrt Real.pi * Real.sqrt Real.pi) *
+      Real.sqrt Real.pi = 1 := by
+    have hp : Real.sqrt Real.pi ≠ 0 := Real.sqrt_ne_zero'.mpr Real.pi_pos
+    field_simp
+  rw [hlim] at hprod
+  have hfull := hprod.mul (dml_power_factor_tendsto_one_of_scale hm hz)
+  rw [mul_one] at hfull
+  apply hfull.congr'
+  filter_upwards [hm.eventually (eventually_gt_atTop 0),
+    hj.eventually (eventually_gt_atTop 0), hcomp.eventually (eventually_gt_atTop 0)]
+      with n hmn hjn hcn
+  rw [binomProb_div_gaussianApprox_eq (m n) (j n) hmn hjn (by omega)]
+  ring
+
+private lemma dml_gaussian_fixed_ratio_tendsto_one {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    Tendsto (fun n => gaussianApproxHalf (m n) (j n) /
+      (Real.sqrt (2 / (Real.pi * (m n : ℝ))) * Real.exp (-(x ^ 2 / 2))))
+      atTop (𝓝 1) := by
+  have hexp : Tendsto (fun n => Real.exp (-(((2 * (j n : ℝ) - (m n : ℝ)) /
+      Real.sqrt (m n : ℝ)) ^ 2 / 2))) atTop (𝓝 (Real.exp (-(x ^ 2 / 2)))) :=
+    Real.continuous_exp.continuousAt.tendsto.comp (((hz.pow 2).div_const 2).neg)
+  have hquot : Tendsto (fun n => Real.exp (-(((2 * (j n : ℝ) - (m n : ℝ)) /
+      Real.sqrt (m n : ℝ)) ^ 2 / 2)) / Real.exp (-(x ^ 2 / 2))) atTop (𝓝 1) := by
+    have h := hexp.div_const (Real.exp (-(x ^ 2 / 2)))
+    rwa [div_self (Real.exp_ne_zero _)] at h
+  apply hquot.congr'
+  filter_upwards [hm.eventually (eventually_gt_atTop 0)] with n hn
+  have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hn
+  have hA : Real.sqrt (2 / (Real.pi * (m n : ℝ))) ≠ 0 :=
+    Real.sqrt_ne_zero'.mpr (by positivity)
+  have heq : ((j n : ℝ) - (m n : ℝ) / 2) ^ 2 / ((m n : ℝ) / 2) =
+      ((2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ)) ^ 2 / 2 := by
+    rw [div_pow, Real.sq_sqrt hn_pos.le]
+    field_simp
+  rw [gaussianApproxHalf, heq]
+  field_simp
+
+/-- For any binomial success-index sequence whose standardized displacement converges to
+`x`, the point mass is equivalent to the Gaussian expression evaluated at the fixed limit `x`.
+The number of trials may follow any natural-valued sequence tending to infinity. -/
+theorem binomProbHalf_isEquivalent_fixedGaussian {m j : ℕ → ℕ} {x : ℝ}
+    (hm : Tendsto m atTop atTop)
+    (hz : Tendsto (fun n => (2 * (j n : ℝ) - (m n : ℝ)) / Real.sqrt (m n : ℝ))
+      atTop (𝓝 x)) :
+    (fun n => binomProbHalf (m n) (j n)) ~[atTop]
+      (fun n => Real.sqrt (2 / (Real.pi * (m n : ℝ))) * Real.exp (-(x ^ 2 / 2))) := by
+  rw [isEquivalent_iff_tendsto_one]
+  · have hprod := (dml_binom_gaussian_ratio_tendsto_one hm hz).mul
+      (dml_gaussian_fixed_ratio_tendsto_one hm hz)
+    rw [mul_one] at hprod
+    apply hprod.congr'
+    filter_upwards [hm.eventually (eventually_gt_atTop 0)] with n hn
+    have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hn
+    have hg : gaussianApproxHalf (m n) (j n) ≠ 0 := by
+      unfold gaussianApproxHalf
+      exact mul_ne_zero (Real.sqrt_ne_zero'.mpr (by positivity)) (Real.exp_ne_zero _)
+    simp only [Pi.div_apply]
+    field_simp
+  · filter_upwards [hm.eventually (eventually_gt_atTop 0)] with n hn
+    have hn_pos : (0 : ℝ) < (m n : ℝ) := by exact_mod_cast hn
+    exact mul_ne_zero (Real.sqrt_ne_zero'.mpr (by positivity)) (Real.exp_ne_zero _)
+
+/-- The source's random-walk local limit theorem: every integer displacement sequence with
+`2 kₙ / √(2n) → x` has point mass equivalent to `(√(π n))⁻¹ exp(-x²/2)`.
+The scaling hypothesis itself implies that `n + kₙ` is a valid success index eventually. -/
+theorem local_deMoivreLaplace_half_of_tendsto {k : ℕ → ℤ} {x : ℝ}
+    (hk : Tendsto (fun n => 2 * (k n : ℝ) / Real.sqrt (2 * (n : ℝ))) atTop (𝓝 x)) :
+    (fun n => binomProbHalf (2 * n) (((n : ℤ) + k n).toNat)) ~[atTop]
+      (fun n => (Real.sqrt (Real.pi * (n : ℝ)))⁻¹ * Real.exp (-(x ^ 2 / 2))) := by
+  have hm : Tendsto (fun n : ℕ => 2 * n) atTop atTop := by
+    apply tendsto_atTop.mpr
+    intro b
+    filter_upwards [eventually_ge_atTop b] with n hn
+    omega
+  have hsqrt : Tendsto (fun n : ℕ => Real.sqrt (2 * (n : ℝ))) atTop atTop := by
+    simpa only [Function.comp_def, Nat.cast_mul, Nat.cast_ofNat] using
+      tendsto_sqrt_atTop.comp (tendsto_natCast_atTop_atTop.comp hm)
+  have hratio : Tendsto (fun n => (k n : ℝ) / (n : ℝ)) atTop (𝓝 0) := by
+    apply (hk.div_atTop hsqrt).congr'
+    filter_upwards [eventually_gt_atTop 0] with n hn
+    have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+    rw [div_div, Real.mul_self_sqrt (by positivity : (0 : ℝ) ≤ 2 * (n : ℝ))]
+    field_simp
+  have hnonneg : ∀ᶠ (n : ℕ) in atTop, (0 : ℤ) ≤ (n : ℤ) + k n := by
+    filter_upwards [hratio.eventually (lt_mem_nhds (by norm_num : (-1 / 2 : ℝ) < 0)),
+      eventually_gt_atTop 0] with n hr hn
+    have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+    have hk_low := (lt_div_iff₀ hn_pos).mp hr
+    have hsum : (0 : ℝ) ≤ (n : ℝ) + (k n : ℝ) := by linarith
+    exact_mod_cast hsum
+  have hjcast : ∀ᶠ (n : ℕ) in atTop, ((((n : ℤ) + k n).toNat : ℕ) : ℝ) =
+      (n : ℝ) + (k n : ℝ) := by
+    filter_upwards [hnonneg] with n hn
+    exact_mod_cast (Int.toNat_of_nonneg hn)
+  have hz : Tendsto (fun n : ℕ =>
+      (2 * ((((n : ℤ) + k n).toNat : ℕ) : ℝ) - ((2 * n : ℕ) : ℝ)) /
+        Real.sqrt ((2 * n : ℕ) : ℝ)) atTop (𝓝 x) := by
+    apply hk.congr'
+    filter_upwards [hjcast] with n hn
+    simp only [Nat.cast_mul, Nat.cast_ofNat, hn]
+    congr 1
+    ring
+  have hequiv := binomProbHalf_isEquivalent_fixedGaussian hm hz
+  apply hequiv.trans_eventuallyEq
+  filter_upwards [eventually_gt_atTop 0] with n hn
+  simp only [Nat.cast_mul, Nat.cast_ofNat]
+  have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+  have hfrac : (2 : ℝ) / (Real.pi * (2 * (n : ℝ))) = (Real.pi * (n : ℝ))⁻¹ := by
+    field_simp
+  rw [hfrac, Real.sqrt_inv]
+
+/-- The rounded success index has standardized displacement converging to `x`. -/
+lemma localDMLIndex_standardized_tendsto (x : ℝ) :
+    Tendsto (fun n => (2 * (localDMLIndex x n : ℝ) - (n : ℝ)) / Real.sqrt (n : ℝ))
+      atTop (𝓝 x) := by
+  have herror : Tendsto (fun n =>
+      (2 * (localDMLIndex x n : ℝ) - (n : ℝ)) / Real.sqrt (n : ℝ) - x)
+      atTop (𝓝 0) := by
+    refine @squeeze_zero_norm' ℕ ℝ _ _ (fun n => 2 / Real.sqrt (n : ℝ)) atTop ?_
+      (tendsto_const_nhds.div_atTop (tendsto_sqrt_atTop.comp tendsto_natCast_atTop_atTop))
+    filter_upwards [eventually_gt_atTop 0,
+      (localDMLIndex_tendsto_atTop x).eventually (eventually_gt_atTop 0)] with n hn hk
+    have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
+    have hs_pos : (0 : ℝ) < Real.sqrt (n : ℝ) := Real.sqrt_pos.mpr hn_pos
+    have hy_pos : (0 : ℝ) < (n : ℝ) / 2 + x * Real.sqrt (n : ℝ) / 2 :=
+      Nat.pos_of_floor_pos hk
+    have hupper := Nat.floor_le hy_pos.le
+    have hlower := Nat.sub_one_lt_floor ((n : ℝ) / 2 + x * Real.sqrt (n : ℝ) / 2)
+    have hnum : |2 * (localDMLIndex x n : ℝ) - (n : ℝ) - x * Real.sqrt (n : ℝ)| ≤ 2 := by
+      simp only [localDMLIndex] at ⊢
+      exact abs_le.mpr ⟨by linarith, by linarith⟩
+    have heq : (2 * (localDMLIndex x n : ℝ) - (n : ℝ)) / Real.sqrt (n : ℝ) - x =
+        (2 * (localDMLIndex x n : ℝ) - (n : ℝ) - x * Real.sqrt (n : ℝ)) /
+          Real.sqrt (n : ℝ) := by
+      field_simp
+    rw [Real.norm_eq_abs, heq, abs_div, abs_of_pos hs_pos]
+    exact div_le_div_of_nonneg_right hnum hs_pos.le
+  simpa only [sub_add_cancel, zero_add] using herror.add_const x
+
+
 set_option maxHeartbeats 8000000 in
 /-- The product of the power factor `nⁿ / (kᵏ (n-k)^{n-k} 2ⁿ)` with the Gaussian correction
 `exp((k - n/2)² / (n/2))`, evaluated at `k = localDMLIndex x n`, tends to `1` as `n → ∞`.
@@ -446,56 +762,7 @@ lemma dml_power_factor_tendsto_one (x : ℝ) :
       ((n : ℝ) ^ n / ((k : ℝ) ^ k * ((n - k : ℕ) : ℝ) ^ (n - k) * 2 ^ n)) *
       Real.exp (((k : ℝ) - (n : ℝ) / 2) ^ 2 / ((n : ℝ) / 2)))
     atTop (nhds 1) := by
-  suffices hlog : Tendsto (fun n =>
-      let k := localDMLIndex x n
-      Real.log ((n : ℝ) ^ n / ((k : ℝ) ^ k * ((n - k : ℕ) : ℝ) ^ (n - k) * 2 ^ n)) +
-        ((k : ℝ) - (n : ℝ) / 2) ^ 2 / ((n : ℝ) / 2))
-    atTop (nhds 0) by
-    have hexp := Real.tendsto_exp_nhds_zero_nhds_one.comp hlog
-    apply hexp.congr'
-    filter_upwards [localDMLIndex_tendsto_atTop x |>.eventually (eventually_gt_atTop 0),
-                    n_sub_localDMLIndex_tendsto_atTop x |>.eventually (eventually_gt_atTop 0),
-                    eventually_gt_atTop 0] with n hk hnk hn
-    simp only [Function.comp_def]
-    exact (Real.exp_add _ _).trans (by rw [Real.exp_log (by positivity)])
-  refine @squeeze_zero_norm' ℕ ℝ _ _ (fun n => 3 * (|x| + 2) ^ 3 / Real.sqrt n) atTop ?_ ?_
-  · filter_upwards [localDMLIndex_tendsto_atTop x |>.eventually (eventually_gt_atTop 0),
-                    n_sub_localDMLIndex_tendsto_atTop x |>.eventually (eventually_gt_atTop 0),
-                    eventually_gt_atTop 0,
-                    localDMLIndex_deviation_bound x,
-                    eventually_ge_atTop (Nat.ceil (16 * (|x| + 2) ^ 2) + 1)] with n hk hnk hn hdev hlarge
-    have hkn : localDMLIndex x n < n := by omega
-    have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
-    have hsqrt_pos : (0 : ℝ) < Real.sqrt n := Real.sqrt_pos.mpr hn_pos
-    have hsq := Real.sq_sqrt hn_pos.le
-    have hn_ge1 : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
-    have hformula := log_power_factor_formula n (localDMLIndex x n) (by omega : 0 < localDMLIndex x n) hkn
-    simp only [] at hformula ⊢
-    rw [hformula]
-    set u := ((2 : ℝ) * (localDMLIndex x n : ℝ) - (n : ℝ)) / (n : ℝ)
-    have hu_bound : |u| ≤ (|x| * Real.sqrt n + 2) / (n : ℝ) := by
-      simp only [u, abs_div, abs_of_pos hn_pos]; exact div_le_div_of_nonneg_right hdev hn_pos.le
-    have hsqrt_le_n : Real.sqrt (n : ℝ) ≤ (n : ℝ) := by nlinarith [sq_nonneg (Real.sqrt (n : ℝ) - 1), hsq]
-    have hbound2 : (|x| * Real.sqrt n + 2) / (n : ℝ) ≤ (|x| + 2) / Real.sqrt n := by
-      rw [div_le_div_iff₀ hn_pos hsqrt_pos]; nlinarith [abs_nonneg x]
-    have hsqrt_large : Real.sqrt n ≥ 4 * (|x| + 2) := by
-      have : (n : ℝ) ≥ 16 * (|x| + 2) ^ 2 + 1 := by
-        have h1 : (n : ℝ) ≥ (Nat.ceil (16 * (|x| + 2) ^ 2) + 1 : ℕ) := by exact_mod_cast hlarge
-        have h2 := Nat.le_ceil (16 * (|x| + 2) ^ 2); push_cast at h1; linarith
-      nlinarith [sq_nonneg (Real.sqrt n - 4 * (|x| + 2))]
-    have hu_half : |u| < 1 / 2 := by
-      have h1 : (|x| + 2) / Real.sqrt n ≤ 1 / 4 := by
-        rw [div_le_div_iff₀ hsqrt_pos (by norm_num : (0:ℝ) < 4)]; linarith
-      linarith [le_trans hu_bound hbound2]
-    have hent := entropy_residual_bound hu_half
-    simp only [Real.norm_eq_abs, abs_mul, abs_neg, abs_of_pos (by positivity : (n : ℝ) / 2 > 0)]
-    calc (n : ℝ) / 2 * |(1 + u) * Real.log (1 + u) + (1 - u) * Real.log (1 - u) - u ^ 2|
-        ≤ (n : ℝ) / 2 * (6 * |u| ^ 3) := by gcongr
-      _ ≤ (n : ℝ) / 2 * (6 * ((|x| + 2) / Real.sqrt n) ^ 3) := by
-          gcongr; exact le_trans hu_bound hbound2
-      _ = 3 * (|x| + 2) ^ 3 / Real.sqrt n := by
-          rw [div_pow]; field_simp; nlinarith [hsq]
-  · exact tendsto_const_nhds.div_atTop (tendsto_sqrt_atTop.comp tendsto_natCast_atTop_atTop)
+  exact dml_power_factor_tendsto_one_of_scale tendsto_id (localDMLIndex_standardized_tendsto x)
 
 /-- Companion to `localDMLIndex_ratio_half`: the ratio `(n - k) / n` for `k = localDMLIndex x n`
 also tends to `1/2`. -/
@@ -522,92 +789,18 @@ theorem binomProbHalf_isEquivalent_gaussianApproxHalf (x : ℝ) :
     (fun n => binomProbHalf n (localDMLIndex x n)) ~[atTop]
     (fun n => gaussianApproxHalf n (localDMLIndex x n)) := by
   rw [isEquivalent_iff_tendsto_one]
-  ·
-
-    set F := fun n : ℕ =>
-        (Stirling.stirlingSeq n / (Stirling.stirlingSeq (localDMLIndex x n) *
-          Stirling.stirlingSeq (n - localDMLIndex x n))) *
-        Real.sqrt (Real.pi * (n : ℝ) ^ 2 / (4 * (localDMLIndex x n : ℝ) *
-          ((n - localDMLIndex x n : ℕ) : ℝ))) *
-        ((n : ℝ) ^ n / ((localDMLIndex x n : ℝ) ^ (localDMLIndex x n) *
-          ((n - localDMLIndex x n : ℕ) : ℝ) ^ (n - localDMLIndex x n) * 2 ^ n)) *
-        Real.exp (((localDMLIndex x n : ℝ) - (n : ℝ) / 2) ^ 2 / ((n : ℝ) / 2))
-
-    suffices hF : Tendsto F atTop (nhds 1) by
-      apply hF.congr'
-      filter_upwards [eventually_gt_atTop 0,
-        (localDMLIndex_tendsto_atTop x).eventually (eventually_gt_atTop 0),
-        (n_sub_localDMLIndex_tendsto_atTop x).eventually (eventually_gt_atTop 0)] with n hn hk hnk
-      simp only [Pi.div_apply, F]
-      exact (binomProb_div_gaussianApprox_eq n (localDMLIndex x n) hn (by omega) (by omega)).symm
-
-    show Tendsto F atTop (nhds 1)
-
-    have hstir : Tendsto (fun n : ℕ => Stirling.stirlingSeq n /
-        (Stirling.stirlingSeq (localDMLIndex x n) * Stirling.stirlingSeq (n - localDMLIndex x n)))
-      atTop (nhds (Real.sqrt Real.pi / (Real.sqrt Real.pi * Real.sqrt Real.pi))) := by
-      apply Filter.Tendsto.div
-      · exact Stirling.tendsto_stirlingSeq_sqrt_pi
-      · exact (Stirling.tendsto_stirlingSeq_sqrt_pi.comp (localDMLIndex_tendsto_atTop x)).mul
-          (Stirling.tendsto_stirlingSeq_sqrt_pi.comp (n_sub_localDMLIndex_tendsto_atTop x))
-      · have h : Real.sqrt Real.pi ≠ 0 := Real.sqrt_ne_zero'.mpr Real.pi_pos
-        exact mul_ne_zero h h
-
-    have hsqrt : Tendsto (fun n : ℕ =>
-        Real.sqrt (Real.pi * (n : ℝ) ^ 2 / (4 * (localDMLIndex x n : ℝ) *
-          ((n - localDMLIndex x n : ℕ) : ℝ))))
-      atTop (nhds (Real.sqrt Real.pi)) := by
-      apply Tendsto.sqrt
-      have heq2 : ∀ᶠ n : ℕ in atTop, Real.pi * (n : ℝ) ^ 2 /
-          (4 * (localDMLIndex x n : ℝ) * ((n - localDMLIndex x n : ℕ) : ℝ)) =
-          Real.pi / (4 * ((localDMLIndex x n : ℝ) / (n : ℝ)) *
-            (((n - localDMLIndex x n : ℕ) : ℝ) / (n : ℝ))) := by
-        filter_upwards [eventually_gt_atTop 0,
-          (localDMLIndex_tendsto_atTop x).eventually (eventually_gt_atTop 0),
-          (n_sub_localDMLIndex_tendsto_atTop x).eventually (eventually_gt_atTop 0)] with n hn hk hnk
-        have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hn
-        have hk_pos : (0 : ℝ) < (localDMLIndex x n : ℝ) := by exact_mod_cast hk
-        have hnk_pos : (0 : ℝ) < ((n - localDMLIndex x n : ℕ) : ℝ) := by exact_mod_cast hnk
-        field_simp
-      apply (tendsto_congr' heq2).mpr
-      have hdenom : Tendsto (fun n : ℕ => 4 * ((localDMLIndex x n : ℝ) / (n : ℝ)) *
-          (((n - localDMLIndex x n : ℕ) : ℝ) / (n : ℝ))) atTop (nhds 1) := by
-        have h := ((tendsto_const_nhds (x := (4:ℝ))).mul (localDMLIndex_ratio_half x)).mul
-                  (n_sub_localDMLIndex_ratio_half x)
-        simpa only [show (4 : ℝ) * (1 / 2) * (1 / 2) = 1 from by ring] using h
-      have h : Tendsto (fun n : ℕ => Real.pi / (4 * ((localDMLIndex x n : ℝ) / (n : ℝ)) *
-          (((n - localDMLIndex x n : ℕ) : ℝ) / (n : ℝ)))) atTop (nhds (Real.pi / 1)) :=
-        tendsto_const_nhds.div hdenom (by norm_num)
-      rwa [div_one] at h
-
-    have hprod_stir_sqrt : Tendsto (fun n : ℕ =>
-        Stirling.stirlingSeq n / (Stirling.stirlingSeq (localDMLIndex x n) *
-          Stirling.stirlingSeq (n - localDMLIndex x n)) *
-        Real.sqrt (Real.pi * (n : ℝ) ^ 2 / (4 * (localDMLIndex x n : ℝ) *
-          ((n - localDMLIndex x n : ℕ) : ℝ))))
-      atTop (nhds 1) := by
-      have h := hstir.mul hsqrt
-      have hlim : Real.sqrt Real.pi / (Real.sqrt Real.pi * Real.sqrt Real.pi) *
-          Real.sqrt Real.pi = 1 := by
-        have hp : Real.sqrt Real.pi ≠ 0 := Real.sqrt_ne_zero'.mpr Real.pi_pos; field_simp
-      rwa [hlim] at h
-
-    have hfull := hprod_stir_sqrt.mul (dml_power_factor_tendsto_one x)
-    rw [mul_one] at hfull
-    exact hfull.congr (fun n => by simp only [F]; ring)
-  ·
-    filter_upwards [Filter.Ioi_mem_atTop 0] with n hn
+  · exact dml_binom_gaussian_ratio_tendsto_one tendsto_id (localDMLIndex_standardized_tendsto x)
+  · filter_upwards [Filter.Ioi_mem_atTop 0] with n hn
     simp only [gaussianApproxHalf, Set.mem_Ioi] at hn ⊢
     apply mul_ne_zero
-    · exact Real.sqrt_ne_zero'.mpr (div_pos (by norm_num : (0:ℝ) < 2)
+    · exact Real.sqrt_ne_zero'.mpr (div_pos (by norm_num : (0 : ℝ) < 2)
         (mul_pos Real.pi_pos (by exact_mod_cast hn)))
     · exact (Real.exp_pos _).ne'
 
-/-- **Local DeMoivre–Laplace limit theorem (`p = 1/2` case).**
-
-If `2k/√(2n) → x`, then `P(S_{2n} = 2k) ∼ (π n)^{-1/2} e^{-x²/2}` for a fair-coin random walk
-`S_n`. Equivalently, for any `x ∈ ℝ`, the ratio
-`binomProbHalf n (localDMLIndex x n) / gaussianApproxHalf n (localDMLIndex x n) → 1`. -/
+/-- Canonical rounded-sequence corollary of the local De Moivre–Laplace theorem: for any
+`x ∈ ℝ`, the binomial point mass divided by its moving Gaussian approximation along
+`localDMLIndex x` tends to `1`. The arbitrary integer-displacement statement with the fixed
+Gaussian value at `x` is `local_deMoivreLaplace_half_of_tendsto`. -/
 theorem local_deMoivreLaplace_half (x : ℝ) :
     Tendsto (fun n => binomProbHalf n (localDMLIndex x n) /
       gaussianApproxHalf n (localDMLIndex x n))

@@ -58,6 +58,26 @@ theorem binomProbHalf_isEquivalent_gaussianApproxHalf_zero :
       (fun n => gaussianApproxHalf n (localDMLIndex 0 n)) :=
   binomProbHalf_isEquivalent_gaussianApproxHalf 0
 
+/-- The canonical rounded sequence also converges to the Gaussian expression at its fixed
+limit, rather than only to the moving approximation. -/
+theorem canonical_fixed_gaussian :
+    (fun n => binomProbHalf n (localDMLIndex 0 n)) ~[atTop]
+      (fun n => Real.sqrt (2 / (Real.pi * (n : ℝ)))) := by
+  simpa using binomProbHalf_isEquivalent_fixedGaussian tendsto_id
+    (localDMLIndex_standardized_tendsto 0)
+
+/-- The noncanonical displacement `kₙ = 1` has scaled displacement tending to zero; its
+success index `n + 1` is a valid lattice point for every positive `n`. -/
+theorem noncanonical_one_fixed_gaussian :
+    (fun n : ℕ => binomProbHalf (2 * n) (n + 1)) ~[atTop]
+      (fun n => (Real.sqrt (Real.pi * (n : ℝ)))⁻¹) := by
+  have hcount : Tendsto (fun n : ℕ => (2 : ℝ) * (n : ℝ)) atTop atTop :=
+    tendsto_natCast_atTop_atTop.const_mul_atTop (by norm_num)
+  have hscale : Tendsto (fun n : ℕ => 2 * ((1 : ℤ) : ℝ) /
+      Real.sqrt (2 * (n : ℝ))) atTop (𝓝 0) := by
+    simpa using (Real.tendsto_sqrt_atTop.comp hcount).const_div_atTop (2 : ℝ)
+  simpa using local_deMoivreLaplace_half_of_tendsto hscale
+
 end MathlibExtTest.Probability.LocalDeMoivreLaplace
 
 -- `#print axioms` for the public declarations: only the standard triple.
