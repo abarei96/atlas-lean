@@ -63,8 +63,9 @@ Here the integral theorem is used with weight exponent `β = 0` and
 
 The adapted dyadic Lean development is inspectable in
 `MathlibExt/Probability/RegularVariationKaramata.lean` at commit
-`e3e3f8ecc896e5925ae9c2b5da576063df868e2e`: `potter_lower`, `potter_upper` and
-`karamata_integral`. This module specializes the integral argument to `β = 0`.
+`e3e3f8ecc896e5925ae9c2b5da576063df868e2e`: `potter_upper` (including its dyadic
+lower-bound step) and `karamata_integral`. This module specializes the integral
+argument to `β = 0`.
 The pre-repair first-moment implementation is
 `MathlibExt/Probability/TailIntegralRV.lean` at commit
 `88d996e13e6af4f66f6ead91f7b47faf0835c402`. The current proof retains that
