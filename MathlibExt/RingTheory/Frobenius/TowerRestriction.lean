@@ -9,37 +9,43 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import Mathlib.RingTheory.Frobenius
+public import Mathlib.RingTheory.RamificationInertia.Inertia
+public import Mathlib.FieldTheory.Galois.Basic
 
 /-!
-# Powers and restrictions of arithmetic Frobenius elements
+# Arithmetic Frobenius in towers and restrictions
 
-This module proves the two calculations behind ATLAS `NumberTheoryI`,
-Proposition 7.22 (Frobenius elements in towers and restrictions), in
-Mathlib's `IsArithFrobAt` API. In the book, for a Galois extension `L / K`
-with an unramified prime `𝔮`, the Frobenius element for an intermediate field
-`E` is the `[F_{𝔮_E} : F_𝔭]`-th power of the Frobenius element for `K`, and
-its restriction to a Galois subextension is the Frobenius element there.
-Here the two facts are stated abstractly, exactly as in the source's
-tower-and-restriction lemma: a power of a Frobenius congruence is a Frobenius
-congruence with the powered exponent, and a Frobenius congruence restricts
-along a compatible algebra homomorphism and group homomorphism.
+This module proves the tower assertion of ATLAS `NumberTheoryI`, Proposition
+7.22, using Mathlib's `IsArithFrobAt`. For a finite ring tower `R → T → B`,
+a prime `Q` of `B`, and actual Frobenius elements over `R` and `T`, the
+intermediate Frobenius, embedded into the action over `R`, is the
+`(Q.under T).inertiaDeg R`-th power of the base Frobenius when inertia is
+trivial. The residue-cardinality identity is derived with Mathlib's
+`Ideal.cardQuot_pow_inertiaDeg`; it is not an assumed powered congruence.
+
+In the number-field application `K ⊂ E ⊂ L`, take `R`, `T`, and `B` to be
+the three rings of integers. Only the subgroup for `L/E` must fix `T`.
+The general theorem uses a compatible homomorphism `H →* G`; the two
+specializations use canonical scalar restriction of algebra automorphisms
+and `E.fixingSubgroup` inclusion. In the latter, `T` and `B` are explicitly
+bound to the integral closures of `R` in `E` and `L`, respectively.
 
 ## Main results
 
-* `AlgHom.IsArithFrobAt.pow_apply_sub_pow_mem`: if `φ x - x ^ q ∈ Q` for all
-  `x`, then `(φ ^ f) x - x ^ q ^ f ∈ Q`.
-* `IsArithFrobAt.pow_smul_sub_pow_mem`: the group-action form, with
-  `q = Nat.card (R ⧸ Q.under R)`.
-* `IsArithFrobAt.comap`: a Frobenius congruence restricts to `(ρ σ)` at
-  `Q.comap ι` along a compatible pair `(ι, ρ)`.
-* `Ideal.mem_inertia_of_forall_smul_sub_pow_mem`: two elements satisfying
-  the same powered congruence differ by an element of the inertia subgroup.
-* `IsArithFrobAt.pow_eq_of_forall_smul_sub_pow_mem_of_inertia_eq_bot` and
-  `IsArithFrobAt.eq_comap_of_forall_smul_sub_pow_mem_of_inertia_eq_bot`:
-  under trivial inertia (the book's unramified hypothesis), the power and
-  restriction congruences identify the Frobenius element itself.
--/
+* `Ideal.natCard_quotient_under_eq_pow_inertiaDeg`: the intermediate
+  residue cardinality is the base residue cardinality raised to its inertia degree.
+* `IsArithFrobAt.tower_eq_of_inertia_eq_bot`: the actual Frobenius tower equality.
+* `IsArithFrobAt.tower_eq_of_inertia_eq_bot_algEquiv`: canonical automorphism inclusion.
+* `IsArithFrobAt.tower_eq_of_inertia_eq_bot_fixingSubgroup`: the intermediate-field case.
+* The six power, compatible-comap, inertia, and uniqueness helpers remain
+  available. The generic powered-congruence uniqueness lemma assumes the
+  powered congruence; the actual tower theorem derives it from the
+  intermediate Frobenius premise and the residue-cardinality identity.
 
+The abstract power and restriction arguments adapt the corresponding
+sections of `v1/Atlas/NumberTheoryI/code/GaloisExtensions.lean`. Its abstract
+`q`/`q^f` result alone does not supply the residue-cardinality calculation.
+-/
 @[expose] public section
 
 namespace Ideal
@@ -172,8 +178,9 @@ theorem comap (ι : C →ₐ[R] B) (ρ : G →* H)
 
 /-- If `σ` is a Frobenius at `Q` and `τ` satisfies the powered congruence
 with exponent `q ^ f`, then `σ ^ f = τ` when the inertia subgroup of `Q` is
-trivial. This is the equality form of the tower statement of
-Proposition 7.22 under its unramified hypothesis. -/
+trivial. This is a uniqueness helper for an already supplied powered
+congruence. The actual tower theorem below derives that congruence from the
+Frobenius premise over the intermediate ring and its residue cardinality. -/
 theorem pow_eq_of_forall_smul_sub_pow_mem_of_inertia_eq_bot
     {f : ℕ} {τ : G}
     (h : IsArithFrobAt R σ Q)
@@ -201,5 +208,105 @@ theorem eq_comap_of_forall_smul_sub_pow_mem_of_inertia_eq_bot
   have hmem := Ideal.mem_inertia_of_forall_smul_sub_pow_mem hrest hτ
   rw [hbot] at hmem
   exact mul_inv_eq_one.mp (Subgroup.mem_bot.mp hmem)
+
+end IsArithFrobAt
+
+
+namespace Ideal
+
+/-- In a finite ring tower `R → T → B`, the intermediate prime residue quotient
+has cardinality equal to the base residue cardinality raised to its canonical
+inertia degree. The cardinality theorem is Mathlib's `cardQuot_pow_inertiaDeg`. -/
+theorem natCard_quotient_under_eq_pow_inertiaDeg
+    (R T : Type*) {B : Type*} [CommRing R] [CommRing T] [CommRing B]
+    [Algebra R T] [Algebra T B] [Algebra R B] [IsScalarTower R T B]
+    [Module.Finite R T] (Q : Ideal B) [Q.IsPrime]
+    [Finite (R ⧸ Q.under R)] [Finite (T ⧸ Q.under T)] :
+    Nat.card (T ⧸ Q.under T) =
+      Nat.card (R ⧸ Q.under R) ^ (Q.under T).inertiaDeg R := by
+  have : (Q.under R).IsMaximal :=
+    Ideal.Quotient.maximal_of_isField _ (Finite.isField_of_domain _)
+  have : (Q.under T).IsMaximal :=
+    Ideal.Quotient.maximal_of_isField _ (Finite.isField_of_domain _)
+  have : (Q.under T).LiesOver (Q.under R) :=
+    Ideal.under_liesOver_of_liesOver T Q (Q.under R)
+  simpa only [Submodule.cardQuot_apply] using
+    (Ideal.cardQuot_pow_inertiaDeg (Q.under R) (Q.under T)).symm
+
+end Ideal
+
+
+namespace IsArithFrobAt
+
+/-- In a finite ring tower `R → T → B`, the Frobenius over `T`, embedded into
+an action over `R`, equals the Frobenius over `R` raised to the intermediate
+residue degree when the inertia subgroup is trivial. Only `H` must fix `T`. -/
+theorem tower_eq_of_inertia_eq_bot
+    {R T B : Type*} [CommRing R] [CommRing T] [CommRing B]
+    [Algebra R T] [Algebra T B] [Algebra R B] [IsScalarTower R T B]
+    [Module.Finite R T] {G H : Type*} [Group G] [Group H]
+    [MulSemiringAction G B] [SMulCommClass G R B]
+    [MulSemiringAction H B] [SMulCommClass H T B]
+    {σ : G} {τ : H} {Q : Ideal B} [Q.IsPrime]
+    (hR : IsArithFrobAt R σ Q) (ι : H →* G)
+    (hcompat : ∀ (h : H) (x : B), (ι h) • x = h • x)
+    (hT : IsArithFrobAt T τ Q) (hbot : Q.inertia G = ⊥) :
+    ι τ = σ ^ (Q.under T).inertiaDeg R := by
+  let : Finite (R ⧸ Q.under R) := hR.finite_quotient
+  let : Finite (T ⧸ Q.under T) := hT.finite_quotient
+  have hcard := Ideal.natCard_quotient_under_eq_pow_inertiaDeg R T Q
+  have htransfer (x : B) :
+      (ι τ) • x - x ^ (Nat.card (R ⧸ Q.under R)) ^ (Q.under T).inertiaDeg R ∈ Q := by
+    rw [hcompat, ← hcard]
+    exact hT x
+  exact (hR.pow_eq_of_forall_smul_sub_pow_mem_of_inertia_eq_bot htransfer hbot).symm
+
+end IsArithFrobAt
+
+
+namespace IsArithFrobAt
+
+/-- For algebra automorphisms in a finite ring tower, the inclusion of the
+intermediate Frobenius is the canonical `AlgEquiv.restrictScalars`. -/
+theorem tower_eq_of_inertia_eq_bot_algEquiv
+    {R T B : Type*} [CommRing R] [CommRing T] [CommRing B]
+    [Algebra R T] [Algebra T B] [Algebra R B] [IsScalarTower R T B]
+    [Module.Finite R T] {σ : B ≃ₐ[R] B} {τ : B ≃ₐ[T] B}
+    {Q : Ideal B} [Q.IsPrime]
+    (hR : IsArithFrobAt R σ Q) (hT : IsArithFrobAt T τ Q)
+    (hbot : Q.inertia (B ≃ₐ[R] B) = ⊥) :
+    τ.restrictScalars R = σ ^ (Q.under T).inertiaDeg R := by
+  simpa only [AlgEquiv.restrictScalarsHom_apply] using
+    hR.tower_eq_of_inertia_eq_bot (R := R) (T := T) (B := B)
+      (AlgEquiv.restrictScalarsHom R : (B ≃ₐ[T] B) →* (B ≃ₐ[R] B))
+      (fun _ _ => rfl) hT hbot
+
+end IsArithFrobAt
+
+
+namespace IsArithFrobAt
+
+/-- The tower equality for the source's intermediate field `E ⊂ L`.
+Here `K` is the fraction field of the base ring `R`, `T` is the integral
+closure of `R` in `E`, and `B` is its integral closure in `L`. In the
+number-field application these are the three rings of integers. The
+intermediate action is `E.fixingSubgroup`; the whole `Gal(L/K)` need not fix `T`. -/
+theorem tower_eq_of_inertia_eq_bot_fixingSubgroup
+    {K L : Type*} [Field K] [Field L] [Algebra K L]
+    {R T B : Type*} [CommRing R] [CommRing T] [CommRing B]
+    [Algebra R K] [IsFractionRing R K] [Algebra R L] [IsScalarTower R K L]
+    (E : IntermediateField K L) [Algebra R E] [IsScalarTower R K E]
+    [Algebra R T] [Algebra T E] [IsScalarTower R T E] [IsIntegralClosure T R E]
+    [Algebra R B] [Algebra B L] [IsScalarTower R B L] [IsIntegralClosure B R L]
+    [Algebra T B] [IsScalarTower R T B] [Algebra T L]
+    [IsScalarTower T E L] [IsScalarTower T B L] [Module.Finite R T]
+    [MulSemiringAction (L ≃ₐ[K] L) B] [SMulCommClass (L ≃ₐ[K] L) R B]
+    [SMulCommClass (↥E.fixingSubgroup) T B]
+    {σ : L ≃ₐ[K] L} {τ : E.fixingSubgroup} {Q : Ideal B} [Q.IsPrime]
+    (hR : IsArithFrobAt R σ Q) (hT : IsArithFrobAt T τ Q)
+    (hbot : Q.inertia (L ≃ₐ[K] L) = ⊥) :
+    (τ : L ≃ₐ[K] L) = σ ^ (Q.under T).inertiaDeg R := by
+  exact hR.tower_eq_of_inertia_eq_bot (R := R) (T := T) (B := B)
+    E.fixingSubgroup.subtype (fun _ _ => rfl) hT hbot
 
 end IsArithFrobAt

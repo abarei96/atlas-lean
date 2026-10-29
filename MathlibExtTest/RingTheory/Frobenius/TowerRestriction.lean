@@ -9,19 +9,17 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import MathlibExt.RingTheory.Frobenius.TowerRestriction
-public import Mathlib.RingTheory.RamificationInertia.Inertia
 public import Mathlib.FieldTheory.Finite.GaloisField
-public import Mathlib.FieldTheory.Galois.Basic
 
 /-!
 # Tests for powers and restrictions of arithmetic Frobenius elements
 
-These examples exercise the six public theorems of
-`MathlibExt.RingTheory.Frobenius.TowerRestriction` (the tower-and-restriction
-calculations of ATLAS `NumberTheoryI`, Proposition 7.22): the power and
-restriction congruences, the inertia bridge, and the two equality forms
-under trivial inertia, plus a concrete check of the power congruence for
-the identity map on `ZMod 2`, where it is Fermat's little theorem iterated.
+These examples preserve the six power/restriction/inertia helpers and
+the original `ZMod 2` checks. They also exercise the actual ring-tower
+equality, canonical automorphism inclusion, and the intermediate-field
+application with two genuine Frobenius premises. The finite model
+`ZMod 2 → GaloisField 2 2` has residue degree two: the base Frobenius
+is nonidentity, and its square is the intermediate Frobenius.
 -/
 
 @[expose] public section
