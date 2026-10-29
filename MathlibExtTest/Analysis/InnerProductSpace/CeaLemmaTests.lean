@@ -165,3 +165,15 @@ example :
     exact ⟨1, by ext i; fin_cases i <;> simp⟩
 
 end MathlibExtTest.Analysis.InnerProductSpace.CeaLemmaTests
+
+
+namespace MathlibExtTest.Analysis.InnerProductSpace.CeaLemmaTests
+
+/-- Coercivity gives uniqueness without a completeness instance on the ambient space. -/
+theorem uniqueness_without_completeSpace {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] {B : E →L[ℝ] E →L[ℝ] ℝ}
+    (hB : IsCoercive B) {L : E →L[ℝ] ℝ} {x y : E}
+    (hx : ∀ w, B x w = L w) (hy : ∀ w, B y w = L w) : x = y := by
+  exact MathlibExt.Analysis.InnerProductSpace.CeaLemma.eq_of_forall_bilin hB hx hy
+
+end MathlibExtTest.Analysis.InnerProductSpace.CeaLemmaTests
