@@ -40,8 +40,6 @@ and column-sum bounds for the `ℓ¹` operator norm, but no `ℓ²` Schur test.
 * `norm_toEuclideanLin_le` : the canonical rectangular operator bound.
 * `norm_toEuclideanCLM_le` : the canonical square operator bound.
 * `norm_matrix_l2_le` : the bound for the scoped matrix L2 operator norm.
-* `schurCLM` : compatibility abbreviation for the canonical rectangular map.
-* `norm_schurCLM_le`, `norm_schurCLM_le_of_le` : compatibility bound forms.
 -/
 
 @[expose] public section
@@ -159,33 +157,5 @@ theorem norm_matrix_l2_le (A : Matrix m n 𝕜) {R C : ℝ}
     ‖A‖ ≤ Real.sqrt (R * C) := by
   exact norm_toEuclideanLin_le A hR hC hrow hcol
 
-/-- Compatibility abbreviation for the canonical rectangular Euclidean map.
-The original bound arguments are retained as inputs; the map itself uses
-finite-dimensional continuity and is independent of those proof arguments. -/
-noncomputable abbrev schurCLM (A : Matrix m n 𝕜) {R C : ℝ} (_hR : 0 ≤ R) (_hC : 0 ≤ C)
-    (_hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (_hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
-    EuclideanSpace 𝕜 n →L[𝕜] EuclideanSpace 𝕜 m :=
-  (Matrix.toEuclideanLin A).toContinuousLinearMap
-
-/-- `schurCLM` acts as the matrix. -/
-@[simp]
-theorem schurCLM_apply (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 ≤ C)
-    (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C)
-    (x : EuclideanSpace 𝕜 n) :
-    schurCLM A hR hC hrow hcol x = Matrix.toLpLin 2 2 A x := rfl
-
-/-- **Schur's test**: the operator norm of `schurCLM` is at most `√(R * C)`. -/
-theorem norm_schurCLM_le (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 ≤ C)
-    (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
-    ‖schurCLM A hR hC hrow hcol‖ ≤ Real.sqrt (R * C) :=
-  norm_toEuclideanLin_le A hR hC hrow hcol
-
-/-- **Schur's test**, single-bound form: if every row sum and every column
-sum of `‖A i j‖` is at most `B`, then `‖schurCLM A …‖ ≤ B`. -/
-theorem norm_schurCLM_le_of_le (A : Matrix m n 𝕜) {B : ℝ} (hB : 0 ≤ B)
-    (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ B) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ B) :
-    ‖schurCLM A hB hB hrow hcol‖ ≤ B := by
-  have h := norm_schurCLM_le A hB hB hrow hcol
-  rwa [Real.sqrt_mul_self hB] at h
 
 end MathlibExt.Analysis.FunctionalAnalysis.SchurTest
