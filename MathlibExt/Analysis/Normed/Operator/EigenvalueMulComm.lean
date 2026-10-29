@@ -70,7 +70,7 @@ theorem finrank_eigenspace_mul_eq (S T : E →L[𝕜] E) {μ : 𝕜} (hμ : μ �
     (S : Module.End 𝕜 E) (T : Module.End 𝕜 E) hμ
 
 /-- The generalized `μ`-eigenspaces of `S * T` and of `T * S` have equal
-dimension, for every exponent `k : ℕ∞`, for bounded operators. -/
+`Module.finrank`, for every exponent `k : ℕ∞`, for bounded operators. -/
 theorem finrank_genEigenspace_mul_eq (S T : E →L[𝕜] E) {μ : 𝕜} (hμ : μ ≠ 0)
     (k : ℕ∞) :
     Module.finrank 𝕜

@@ -19,8 +19,9 @@ public import Mathlib.LinearAlgebra.Matrix.ToLin
 For linear maps `f : V →ₗ[𝕜] W` and `g : W →ₗ[𝕜] V` over a field, the nonzero
 eigenvalues of `f ∘ₗ g` and of `g ∘ₗ f` coincide, and they do so with the same
 geometric multiplicity: the eigenspaces are linearly equivalent, via `g` and a
-rescaled `f`. The same holds for the generalized eigenspaces, whose dimensions
-are equal (these are the algebraic multiplicities in finite dimension).
+rescaled `f`. Generalized eigenspaces have equal `Module.finrank` at every
+exponent. In finite dimension the stabilized generalized eigenspace (for example
+at exponent `⊤`) measures algebraic multiplicity.
 
 This is the eigenvector-level refinement of the spectrum statement in Mathlib
 (`spectrum.nonzero_mul_comm`): the spectrum records only invertibility, while
@@ -42,9 +43,10 @@ singular values of `T`. The bounded-operator version is in
   `f ∘ₗ g` and of `g ∘ₗ f` are linearly equivalent.
 * `End.hasEigenvalue_comp_iff`: `μ ≠ 0` is an eigenvalue of `f ∘ₗ g`
   iff it is an eigenvalue of `g ∘ₗ f`.
-* `End.finrank_eigenspace_comp_eq`: the geometric multiplicities agree.
+* `End.finrank_eigenspace_comp_eq`: eigenspace finranks agree; in finite
+  dimension these are the geometric multiplicities.
 * `End.finrank_genEigenspace_comp_eq`: the generalized eigenspaces
-  have equal dimension, for every exponent `k : ℕ∞`.
+  have equal `Module.finrank`, for every exponent `k : ℕ∞`.
 * `End.hasEigenvector_comp`: an eigenvector of `f ∘ₗ g` is sent by `g`
   to an eigenvector of `g ∘ₗ f` for the same nonzero eigenvalue.
 * The `*_mul_*` versions: the same statements for endomorphisms, with `*`
@@ -218,8 +220,10 @@ theorem injective_genEigenspaceCompMap (f : V →ₗ[𝕜] W) (g : W →ₗ[𝕜
 
 set_option linter.style.haveILetI false in
 /-- The generalized `μ`-eigenspaces of `f ∘ₗ g` and of `g ∘ₗ f` have equal
-dimension, for every exponent `k : ℕ∞` and every nonzero `μ`. In finite
-dimension these are the algebraic multiplicities. -/
+`Module.finrank`, for every exponent `k : ℕ∞` and every nonzero `μ`.
+They are finite-dimensional together; if both are infinite-dimensional, both
+finranks are zero. In finite dimension only the stabilized generalized eigenspace
+(for example at exponent `⊤`) measures algebraic multiplicity. -/
 theorem finrank_genEigenspace_comp_eq (f : V →ₗ[𝕜] W) (g : W →ₗ[𝕜] V) {μ : 𝕜}
     (hμ : μ ≠ 0) (k : ℕ∞) :
     Module.finrank 𝕜 (Module.End.genEigenspace (f ∘ₗ g) μ k) =
@@ -310,7 +314,7 @@ theorem finrank_eigenspace_mul_eq (A : Matrix ι κ 𝕜) (B : Matrix κ ι 𝕜
   exact End.finrank_eigenspace_comp_eq (Matrix.toLin' A) (Matrix.toLin' B) hμ
 
 /-- The generalized `μ`-eigenspaces of `A * B` and of `B * A` have equal
-dimension, for every exponent `k : ℕ∞`. -/
+`Module.finrank`, for every exponent `k : ℕ∞`. -/
 theorem finrank_genEigenspace_mul_eq (A : Matrix ι κ 𝕜) (B : Matrix κ ι 𝕜) {μ : 𝕜}
     (hμ : μ ≠ 0) (k : ℕ∞) :
     Module.finrank 𝕜 (Module.End.genEigenspace (Matrix.toLin' (A * B)) μ k) =
