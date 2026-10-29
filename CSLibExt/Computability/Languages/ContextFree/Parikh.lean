@@ -19,8 +19,8 @@ its words. A set of vectors is *linear* when it is a single coset of a
 finitely generated submonoid (a base vector plus arbitrary nonnegative
 combinations of finitely many period vectors), and *semilinear* when it
 is a finite union of linear sets. Parikh's theorem says the Parikh
-image of every context-free language is semilinear (see
-`WantedExt.TheoryOfComputation.ParikhWanted`).
+image of every context-free language is semilinear. That theorem is not
+formalized here.
 
 ## Main definitions
 

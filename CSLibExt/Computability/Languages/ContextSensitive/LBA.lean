@@ -77,11 +77,7 @@ The other inclusion of that direction (if the grammar derives a nonempty
 word, the LBA accepts it, so the two languages are equal), the converse
 direction (every context-sensitive grammar has an LBA recognizing it, the
 reverse-derivation LBA), and context-sensitive membership decidability and
-its PSPACE bound, are not proved here; they are stated as wanted theorems in
-`WantedExt/TheoryOfComputation/LBAGrammarSoundness.lean` (the other
-inclusion of this direction),
-`WantedExt/TheoryOfComputation/CSGToLBA.lean` (the converse direction) and
-`WantedExt/TheoryOfComputation/CSLMembership.lean` (decidability, PSPACE).
+its PSPACE bound, are not proved here.
 No soundness invariant for the grammar is claimed here: an earlier
 version of this file stated one (`lbaInv`), but it was not preserved
 by the grammar rules (a terminal form could satisfy it without the
