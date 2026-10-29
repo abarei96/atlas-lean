@@ -33,6 +33,7 @@ open scoped _root_.lp
 namespace MathlibExtTest.Analysis.InnerProductSpace.ShiftFredholmIndexTests
 
 open MathlibExt.Analysis.InnerProductSpace.ShiftFredholmIndex
+open MathlibExt.Analysis.InnerProductSpace.LpShiftOperator
 
 /-- The unilateral shift on `ℓ²(ℕ, ℂ)` has Fredholm index `-1`. -/
 example : (shiftCLM (𝕜 := ℂ)).index = -1 :=

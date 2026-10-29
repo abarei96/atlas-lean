@@ -8,7 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
-public import Mathlib.Analysis.InnerProductSpace.l2Space
+public import MathlibExt.Analysis.InnerProductSpace.LpShiftOperator
 public import Mathlib.Analysis.Normed.Operator.Fredholm.Basic
 public import Mathlib.Algebra.Module.LinearMap.Index
 
@@ -47,16 +47,15 @@ operator). It is not one of the 72 v1 targets, and the index
 computations are not in the pinned Mathlib (which has the general
 Fredholm-operator API `ContinuousLinearMap.IsFredholm` and
 `LinearMap.index`, but no computation for the shift) or in base
-MathlibExt. The shift operators are developed here from scratch so
-that this file is self-contained. See e.g. Reed–Simon, *Methods of
+MathlibExt. This file uses the established shift operators from
+`LpShiftOperator` and extends their API with power and index results.
+See e.g. Reed–Simon, *Methods of
 Modern Mathematical Physics I: Functional Analysis*, Section VII.2,
 and Conway, *A Course in Functional Analysis*, Chapter VII, for the
 classical statements.
 
 ## Main declarations
 
-* `shiftCLM`, `backwardCLM` : the unilateral and backward shifts as
-  bounded operators on `ℓ²(ℕ, 𝕜)`.
 * `shiftCLM_pow_apply`, `backwardCLM_pow_apply` : the pointwise action
   of the powers.
 * `backwardCLM_pow_comp_shiftCLM_pow` : `B ^ n ∘L S ^ n = 1`.
@@ -77,141 +76,11 @@ classical statements.
 namespace MathlibExt.Analysis.InnerProductSpace.ShiftFredholmIndex
 
 open Filter Topology Set
+open LpShiftOperator
 open scoped _root_.lp ENNReal
 open scoped LinearMap.FiniteRangeSetoid
 
 variable {𝕜 : Type*} [RCLike 𝕜]
-
-/-- The forward-shift function on sequences: insert `0` at `0` and shift up by one. -/
-def shiftFun (x : ℕ → 𝕜) : ℕ → 𝕜
-  | 0 => 0
-  | n + 1 => x n
-
-/-- The backward-shift function on sequences: drop coordinate `0` and shift down by one. -/
-def backwardFun (x : ℕ → 𝕜) (i : ℕ) : 𝕜 := x (i + 1)
-
-@[simp] theorem shiftFun_zero (x : ℕ → 𝕜) : shiftFun x 0 = 0 := rfl
-
-@[simp] theorem shiftFun_succ (x : ℕ → 𝕜) (n : ℕ) : shiftFun x (n + 1) = x n := rfl
-
-omit [RCLike 𝕜] in
-@[simp] theorem backwardFun_apply (x : ℕ → 𝕜) (i : ℕ) : backwardFun x i = x (i + 1) :=
-  rfl
-
-/-- The shifted sequence of an `ℓ²` sequence is in `ℓ²`: its squared
-norms are the squared norms of the original sequence, shifted by one. -/
-theorem memℓp_shiftFun {x : ℓ²(ℕ, 𝕜)} : Memℓp (shiftFun (x : ℕ → 𝕜)) 2 := by
-  apply memℓp_gen
-  have h := (lp.memℓp x).summable (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal)
-  have h' : Summable (fun n => ‖shiftFun (x : ℕ → 𝕜) (n + 1)‖ ^ (2 : ℝ≥0∞).toReal) := by
-    simpa only [shiftFun_succ] using h
-  exact (summable_nat_add_iff 1).mp h'
-
-/-- The backward-shifted sequence of an `ℓ²` sequence is in `ℓ²`: its squared
-norms are a tail of the squared norms of the original sequence. -/
-theorem memℓp_backwardFun {x : ℓ²(ℕ, 𝕜)} : Memℓp (backwardFun (x : ℕ → 𝕜)) 2 := by
-  apply memℓp_gen
-  have h := (lp.memℓp x).summable (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal)
-  have h' : Summable (fun n => ‖backwardFun (x : ℕ → 𝕜) n‖ ^ (2 : ℝ≥0∞).toReal) := by
-    simpa only [backwardFun_apply] using (summable_nat_add_iff 1).mpr h
-  exact h'
-
-/-- The forward shift as a linear map. -/
-noncomputable def shiftLinMap : ℓ²(ℕ, 𝕜) →ₗ[𝕜] ℓ²(ℕ, 𝕜) where
-  toFun x := ⟨shiftFun (x : ℕ → 𝕜), memℓp_shiftFun⟩
-  map_add' x y := by
-    apply lp.ext
-    funext i
-    cases i with
-    | zero =>
-        simp only [lp.coeFn_add, shiftFun_zero, Pi.add_apply, add_zero]
-    | succ n => simp only [lp.coeFn_add, shiftFun_succ, Pi.add_apply]
-  map_smul' c x := by
-    apply lp.ext
-    funext i
-    cases i with
-    | zero =>
-        simp only [lp.coeFn_smul, shiftFun_zero, Pi.smul_apply, smul_zero]
-    | succ n =>
-        simp only [lp.coeFn_smul, shiftFun_succ, Pi.smul_apply, smul_eq_mul,
-          RingHom.id_apply]
-
-/-- The backward shift as a linear map. -/
-noncomputable def backwardLinMap : ℓ²(ℕ, 𝕜) →ₗ[𝕜] ℓ²(ℕ, 𝕜) where
-  toFun x := ⟨backwardFun (x : ℕ → 𝕜), memℓp_backwardFun⟩
-  map_add' x y := by
-    apply lp.ext
-    funext i
-    simp only [lp.coeFn_add, backwardFun_apply, Pi.add_apply]
-  map_smul' c x := by
-    apply lp.ext
-    funext i
-    simp only [lp.coeFn_smul, backwardFun_apply, Pi.smul_apply, smul_eq_mul,
-      RingHom.id_apply]
-
-/-- The squared norms of a shifted sequence sum to the squared norms of
-the original sequence. -/
-theorem tsum_shiftFun_norm (x : ℓ²(ℕ, 𝕜)) :
-    ∑' i, ‖shiftFun (x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal =
-      ∑' i, ‖(x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal := by
-  have hs : Summable (fun i => ‖shiftFun (x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal) :=
-    memℓp_shiftFun.summable (by simp)
-  rw [hs.tsum_eq_zero_add]
-  simp only [shiftFun_zero, shiftFun_succ, norm_zero,
-    Real.zero_rpow (by simp : (2 : ℝ≥0∞).toReal ≠ 0), zero_add]
-
-/-- The squared norms of a backward-shifted sequence sum to at most the
-squared norms of the original sequence: they are a tail sum. -/
-theorem tsum_backwardFun_norm_le (x : ℓ²(ℕ, 𝕜)) :
-    ∑' i, ‖backwardFun (x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal ≤
-      ∑' i, ‖(x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal := by
-  have hs : Summable (fun i => ‖(x : ℕ → 𝕜) i‖ ^ (2 : ℝ≥0∞).toReal) :=
-    (lp.memℓp x).summable (by simp)
-  rw [hs.tsum_eq_zero_add]
-  simp only [backwardFun_apply]
-  exact le_add_of_nonneg_left (Real.rpow_nonneg (norm_nonneg _) _)
-
-/-- The forward shift preserves norms. -/
-theorem norm_shiftLinMap_apply (x : ℓ²(ℕ, 𝕜)) : ‖shiftLinMap x‖ = ‖x‖ := by
-  have hpow : ‖shiftLinMap x‖ ^ (2 : ℝ≥0∞).toReal = ‖x‖ ^ (2 : ℝ≥0∞).toReal := by
-    rw [lp.norm_rpow_eq_tsum (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal) (shiftLinMap x),
-      lp.norm_rpow_eq_tsum (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal) x]
-    exact tsum_shiftFun_norm x
-  have hexp : (2 : ℝ≥0∞).toReal = (2 : ℝ) := by simp
-  rw [hexp, Real.rpow_two, Real.rpow_two] at hpow
-  exact (sq_eq_sq₀ (norm_nonneg _) (norm_nonneg _)).mp hpow
-
-/-- The backward shift does not increase norms. -/
-theorem norm_backwardLinMap_apply_le (x : ℓ²(ℕ, 𝕜)) : ‖backwardLinMap x‖ ≤ ‖x‖ := by
-  have hpow : ‖backwardLinMap x‖ ^ (2 : ℝ≥0∞).toReal ≤ ‖x‖ ^ (2 : ℝ≥0∞).toReal := by
-    rw [lp.norm_rpow_eq_tsum (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal) (backwardLinMap x),
-      lp.norm_rpow_eq_tsum (by simp : (0 : ℝ) < (2 : ℝ≥0∞).toReal) x]
-    exact tsum_backwardFun_norm_le x
-  have hexp : (2 : ℝ≥0∞).toReal = (2 : ℝ) := by simp
-  rw [hexp, Real.rpow_two, Real.rpow_two] at hpow
-  exact le_of_sq_le_sq hpow (norm_nonneg _)
-
-/-- The unilateral shift as a bounded operator on `ℓ²(ℕ, 𝕜)`. -/
-noncomputable def shiftCLM : ℓ²(ℕ, 𝕜) →L[𝕜] ℓ²(ℕ, 𝕜) :=
-  shiftLinMap.mkContinuous 1 (fun x => by
-    rw [one_mul]
-    exact le_of_eq (norm_shiftLinMap_apply x))
-
-/-- The backward shift as a bounded operator on `ℓ²(ℕ, 𝕜)`. -/
-noncomputable def backwardCLM : ℓ²(ℕ, 𝕜) →L[𝕜] ℓ²(ℕ, 𝕜) :=
-  backwardLinMap.mkContinuous 1 (fun x => by
-    rw [one_mul]
-    exact norm_backwardLinMap_apply_le x)
-
-/-- Pointwise action of the unilateral shift. -/
-theorem shiftCLM_apply (x : ℓ²(ℕ, 𝕜)) (i : ℕ) :
-    shiftCLM x i = shiftFun (x : ℕ → 𝕜) i :=
-  rfl
-
-/-- Pointwise action of the backward shift. -/
-theorem backwardCLM_apply (x : ℓ²(ℕ, 𝕜)) (i : ℕ) :
-    backwardCLM x i = backwardFun (x : ℕ → 𝕜) i :=
-  rfl
 
 section Iterates
 
