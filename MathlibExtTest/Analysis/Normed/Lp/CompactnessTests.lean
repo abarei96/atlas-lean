@@ -57,7 +57,7 @@ example [Fact (1 ≤ (2 : ℝ≥0∞))] (x : lp (fun _ : ℕ => ℝ) 2) :
 /-- A singleton in `ℓ² (ℕ, ℝ)` is relatively compact: its truncations stabilize. -/
 example (hp : (2 : ℝ≥0∞) ≠ ⊤) [Fact (1 ≤ (2 : ℝ≥0∞))] :
     IsCompact (closure {lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ)}) := by
-  rw [isCompact_closure_iff_bounded_and_uniformTailVanishing hp]
+  rw [isCompact_closure_iff_bounded_and_uniformTailVanishing hp, isBounded_iff_forall_norm_le]
   have htrunc : lpTrunc (2 : ℝ≥0∞) 1 (lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ))
       = lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ) := by
     ext j
@@ -78,7 +78,8 @@ example (hp : (2 : ℝ≥0∞) ≠ ⊤) [Fact (1 ≤ (2 : ℝ≥0∞))] :
 /-- A singleton in `ℓ² (ℕ, ℝ)` is compact, via the compact form of the criterion. -/
 example (hp : (2 : ℝ≥0∞) ≠ ⊤) [Fact (1 ≤ (2 : ℝ≥0∞))] :
     IsCompact {lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ)} := by
-  rw [isCompact_iff_isComplete_and_bounded_and_uniformTailVanishing hp]
+  rw [isCompact_iff_isComplete_and_bounded_and_uniformTailVanishing hp,
+    isBounded_iff_forall_norm_le]
   have htrunc : lpTrunc (2 : ℝ≥0∞) 1 (lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ))
       = lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ) := by
     ext j
@@ -124,7 +125,7 @@ example (hp : (2 : ℝ≥0∞) ≠ ⊤) [Fact (1 ≤ (2 : ℝ≥0∞))] :
     IsCompact (closure (Set.range
         (fun n : ℕ => (((n : ℝ) + 1)⁻¹ : ℝ) • lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ))
       ∪ {0})) := by
-  rw [isCompact_closure_iff_bounded_and_uniformTailVanishing hp]
+  rw [isCompact_closure_iff_bounded_and_uniformTailVanishing hp, isBounded_iff_forall_norm_le]
   have htrunc : lpTrunc (2 : ℝ≥0∞) 1 (lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ))
       = lp.single (E := fun _ : ℕ => ℝ) 2 0 (1 : ℝ) := by
     ext j
@@ -230,5 +231,13 @@ example [Fact (1 ≤ (2 : ℝ≥0∞))] (z : Fin 2 → ℝ) :
 example [Fact (1 ≤ (2 : ℝ≥0∞))] (x : lp (fun _ : ℕ => ℝ) 2) (M : ℕ) :
     ‖x - lpTrunc (2 : ℝ≥0∞) M x‖ ≤ ‖x - lpTrunc (2 : ℝ≥0∞) 0 x‖ :=
   norm_sub_lpTrunc_mono (Nat.zero_le M) x
+
+/-- A caller with the former norm-bound hypothesis uses the canonical boundedness interface. -/
+example [Fact (1 ≤ (2 : ℝ≥0∞))] {K : Set (lp (fun _ : ℕ => ℝ) 2)}
+    (hNorm : ∃ C, ∀ x ∈ K, ‖x‖ ≤ C) (hTail : UniformTailVanishing (2 : ℝ≥0∞) K) :
+    TotallyBounded K :=
+  (totallyBounded_iff_bounded_and_uniformTailVanishing
+    (by norm_num : (2 : ℝ≥0∞) ≠ ⊤)).mpr
+      ⟨isBounded_iff_forall_norm_le.mpr hNorm, hTail⟩
 
 end MathlibExt.Analysis.Normed.Lp.CompactnessTest

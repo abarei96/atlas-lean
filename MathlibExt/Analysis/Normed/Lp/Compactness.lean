@@ -202,8 +202,9 @@ theorem norm_sub_lpTrunc_mono {N M : ℕ} (h : N ≤ M) (x : lp (fun _ : ℕ => 
     · exact absurd (lt_of_lt_of_le hiN h) hiM
     · rw [ite_eq_right hiM, ite_eq_right hiN, sub_zero]
 
-/-- The finite lift is bounded by the `ℓ^p` norm of the coordinate vector,
-up to the factor `N ^ (1 / p)`. -/
+/-- The target `ℓ^p` norm of the finite lift is bounded by
+`N ^ (1 / p)` times the supremum norm of its first `N` coordinates.
+The norm on the source Pi type `Fin N → 𝕜` is the supremum norm. -/
 theorem norm_lpLift_le (hp : p ≠ ⊤) (N : ℕ) (y : ℕ → 𝕜) :
     ‖lpLift p N y‖ ≤ (N : ℝ) ^ (1 / p.toReal) * ‖fun i : Fin N => y i‖ := by
   have hp0 : 0 < p := zero_lt_one.trans_le Fact.out
@@ -254,10 +255,10 @@ a set is totally bounded if and only if it is bounded and its tails vanish
 uniformly. -/
 theorem totallyBounded_iff_bounded_and_uniformTailVanishing (hp : p ≠ ⊤)
     {K : Set (lp (fun _ : ℕ => 𝕜) p)} :
-    TotallyBounded K ↔ (∃ C, ∀ x ∈ K, ‖x‖ ≤ C) ∧ UniformTailVanishing p K := by
+    TotallyBounded K ↔ Bornology.IsBounded K ∧ UniformTailVanishing p K := by
   constructor
   · intro hTB
-    refine ⟨hTB.isBounded.exists_norm_le, ?_⟩
+    refine ⟨hTB.isBounded, ?_⟩
     intro ε hε
     classical
     obtain ⟨t, htK, htfin, hcover⟩ :=
@@ -291,7 +292,8 @@ theorem totallyBounded_iff_bounded_and_uniformTailVanishing (hp : p ≠ ⊤)
           linarith
       _ = ε / 2 := by ring
       _ < ε := by linarith
-  · rintro ⟨⟨C, hC⟩, htail⟩
+  · rintro ⟨hBounded, htail⟩
+    obtain ⟨C, hC⟩ := isBounded_iff_forall_norm_le.mp hBounded
     rw [Metric.totallyBounded_iff]
     intro ε hε
     rcases K.eq_empty_or_nonempty with rfl | hKne
@@ -375,7 +377,7 @@ theorem totallyBounded_iff_bounded_and_uniformTailVanishing (hp : p ≠ ⊤)
 /-- Compact form of the Riesz–Fréchet–Kolmogorov criterion. -/
 theorem isCompact_iff_isComplete_and_bounded_and_uniformTailVanishing (hp : p ≠ ⊤)
     {K : Set (lp (fun _ : ℕ => 𝕜) p)} :
-    IsCompact K ↔ IsComplete K ∧ (∃ C, ∀ x ∈ K, ‖x‖ ≤ C)
+    IsCompact K ↔ IsComplete K ∧ Bornology.IsBounded K
       ∧ UniformTailVanishing p K := by
   rw [isCompact_iff_totallyBounded_isComplete,
     totallyBounded_iff_bounded_and_uniformTailVanishing hp]
@@ -384,7 +386,7 @@ theorem isCompact_iff_isComplete_and_bounded_and_uniformTailVanishing (hp : p �
 /-- Relative-compact form of the Riesz–Fréchet–Kolmogorov criterion. -/
 theorem isCompact_closure_iff_bounded_and_uniformTailVanishing (hp : p ≠ ⊤)
     {K : Set (lp (fun _ : ℕ => 𝕜) p)} :
-    IsCompact (closure K) ↔ (∃ C, ∀ x ∈ K, ‖x‖ ≤ C) ∧ UniformTailVanishing p K := by
+    IsCompact (closure K) ↔ Bornology.IsBounded K ∧ UniformTailVanishing p K := by
   rw [isCompact_iff_totallyBounded_isComplete]
   constructor
   · rintro ⟨hTB, -⟩
