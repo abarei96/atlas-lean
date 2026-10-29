@@ -19,8 +19,7 @@ public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
   convergence of the Fourier series, pointwise convergence at `π / 2`, the
   decay rate `n · ‖ĉₙ‖ → 0`, and the numeric bound `‖ĉ₃(cos)‖ ≤ 1 / 3` from
   the coefficient identity plus `‖ĉ₃(-sin)‖ ≤ 1`.
-* `x ↦ (Real.sin (2 * x) : ℂ)` on a `π` period: summable coefficients and
-  Riemann–Lebesgue (coefficients tend to `0`).
+* `x ↦ (Real.sin (2 * x) : ℂ)` on a `π` period: summable coefficients.
 -/
 
 namespace MathlibExtTest.Analysis.Fourier.C1FourierSummableTests
@@ -78,13 +77,6 @@ example : Summable (fourierCoeffOn (show (0:ℝ) < 2 * Real.pi by positivity)
 theorem sin_two_mul_summable_fourierCoeffOn (hT : (0:ℝ) < Real.pi) :
     Summable (fourierCoeffOn hT (fun x => (Real.sin (2 * x) : ℂ))) :=
   summable_fourierCoeffOn_of_hasDerivAt hT sin_two_periodic_complex
-    (fun x => sin_two_hasDerivAt_complex x) sin_two_deriv_continuous_complex
-
-/-- Riemann–Lebesgue for `x ↦ sin (2x)`: its Fourier coefficients tend to `0`. -/
-theorem sin_two_mul_tendsto_fourierCoeffOn (hT : (0:ℝ) < Real.pi) :
-    Filter.Tendsto (fourierCoeffOn hT (fun x => (Real.sin (2 * x) : ℂ)))
-      Filter.cofinite (nhds 0) :=
-  tendsto_fourierCoeffOn_cofinite_of_hasDerivAt hT sin_two_periodic_complex
     (fun x => sin_two_hasDerivAt_complex x) sin_two_deriv_continuous_complex
 
 /-- The Fourier series of `cos` converges uniformly on the circle. -/

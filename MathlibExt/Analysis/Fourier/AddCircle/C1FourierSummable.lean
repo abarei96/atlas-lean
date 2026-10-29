@@ -11,6 +11,8 @@ module
 public import Mathlib.Analysis.Fourier.AddCircle
 public import Mathlib.Analysis.PSeries
 
+import MathlibExt.Analysis.Fourier.AddCircle.RiemannLebesgue
+
 /-!
 # Fourier coefficients of a `C¹` periodic function are absolutely summable
 
@@ -21,7 +23,8 @@ on one period, Parseval's identity gives `∑ ‖ĉₙ(f')‖² < ∞`, and Cauc
 (in the form `2ab ≤ a² + b²`) against the `ℓ²` sequence `1 / |n|` yields
 `∑ ‖ĉₙ(f)‖ < ∞`. Mathlib's `hasSum_fourier_series_of_summable` then gives
 uniform convergence of the Fourier series of `f` to `f` on the circle, and
-pointwise convergence on any one period.
+pointwise convergence on any one period. The coefficient decay proof reuses
+`RiemannLebesgue.tendsto_fourierCoeffOn_cofinite` for the interval-integrable derivative.
 
 Source: companion to the Fejér section of
 `v1/Atlas/IntroductionToFunctionalAnalysis/code/FourierSeries.lean`
@@ -222,16 +225,6 @@ theorem summable_fourierCoeffOn_of_hasDerivAt {T : ℝ} (hT : 0 < T) {f f' : ℝ
             rw [hSqEq]
   · exact hBound.add hPoint
 
-/-- **Riemann–Lebesgue for `C¹` functions:** the coefficients tend to `0` along
-the cofinite filter. -/
-theorem tendsto_fourierCoeffOn_cofinite_of_hasDerivAt {T : ℝ} (hT : 0 < T)
-    {f f' : ℝ → ℂ}
-    (hper : Function.Periodic f T)
-    (hderiv : ∀ x, HasDerivAt f (f' x) x)
-    (hf'cont : Continuous f') :
-    Filter.Tendsto (fourierCoeffOn hT f) Filter.cofinite (nhds 0) :=
-  (summable_fourierCoeffOn_of_hasDerivAt hT hper hderiv hf'cont).tendsto_cofinite_zero
-
 /-- **Decay rate:** `n · ‖ĉₙ(f)‖ → 0` along the cofinite filter. -/
 theorem tendsto_mul_norm_fourierCoeffOn_of_hasDerivAt {T : ℝ} (hT : 0 < T)
     {f f' : ℝ → ℂ}
@@ -241,15 +234,10 @@ theorem tendsto_mul_norm_fourierCoeffOn_of_hasDerivAt {T : ℝ} (hT : 0 < T)
     Filter.Tendsto (fun n : ℤ => (n : ℝ) * ‖fourierCoeffOn hT f n‖)
       Filter.cofinite (nhds 0) := by
   have hf'int : IntervalIntegrable f' volume 0 T := hf'cont.intervalIntegrable 0 T
-  have hSq : Summable (fun n : ℤ => ‖fourierCoeffOn hT f' n‖ ^ 2) :=
-    (hasSum_sq_fourierCoeffOn hT (memLp_of_continuousOn_Ioc hf'cont)).summable
   have hToZero : Filter.Tendsto (fun n : ℤ => ‖fourierCoeffOn hT f' n‖)
       Filter.cofinite (nhds 0) := by
-    have h1 : Filter.Tendsto (fun n : ℤ => ‖fourierCoeffOn hT f' n‖ ^ 2)
-        Filter.cofinite (nhds 0) := hSq.tendsto_cofinite_zero
-    have h2 : Filter.Tendsto (fun n : ℤ => Real.sqrt (‖fourierCoeffOn hT f' n‖ ^ 2))
-        Filter.cofinite (nhds (Real.sqrt 0)) := h1.sqrt
-    simpa [Real.sqrt_sq (norm_nonneg _)] using h2
+    simpa only [norm_zero] using
+      (RiemannLebesgue.tendsto_fourierCoeffOn_cofinite hT hf'int).norm
   have hScaled : Filter.Tendsto (fun n : ℤ => (T / (2 * Real.pi)) * ‖fourierCoeffOn hT f' n‖)
       Filter.cofinite (nhds ((T / (2 * Real.pi)) * 0)) := hToZero.const_mul _
   rw [mul_zero] at hScaled
