@@ -13,7 +13,7 @@ public import Mathlib.Probability.Independence.Basic
 public import Mathlib.Probability.Independence.Integration
 public import Mathlib.Probability.IdentDistrib
 public import Mathlib.MeasureTheory.Integral.DominatedConvergence
-public import Mathlib.MeasureTheory.Constructions.Polish.StronglyMeasurable
+import Mathlib.MeasureTheory.Constructions.Polish.StronglyMeasurable
 
 /-!
 # Wald's equation
