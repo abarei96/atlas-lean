@@ -8,6 +8,8 @@ LICENSE file in the root directory of this source tree.
 
 module
 
+public import MathlibExt.Probability.RegularVariation
+
 public import Mathlib.MeasureTheory.Integral.DominatedConvergence
 public import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
 public import Mathlib.Analysis.SpecialFunctions.Integrability.Basic
@@ -25,11 +27,12 @@ import Mathlib.Tactic.NormNum
 # Regular variation and Karamata's integral theorem
 
 Regularly varying tails and Karamata's theorem on the asymptotics of their
-truncated moments. The definitions `IsSlowlyVarying`, `IsRegularlyVarying`,
-`rightTail`, `leftTail` and `combinedTail` are copied verbatim from
-`v1/Atlas/TheoryOfProbability/code/DomainAttraction.lean` (they are also
-ported, in other namespaces, by earlier batches; on rebase the copies should
-be unified).
+truncated moments. This module imports and extends the canonical
+`MathlibExt.Probability.RegularVariation` predicates and strict tails. Slow
+factors need only be eventually positive. The analytic results live in that
+canonical namespace; no parallel variation or tail definitions are retained.
+The old globally positive slow factors give an equivalent existential regular
+predicate by patching early values, while the fixed slow predicates differ.
 
 ## Source
 
@@ -62,77 +65,7 @@ dyadic scales `1/2` and `2` together with monotonicity.
 open MeasureTheory Filter Set
 open scoped Topology ENNReal NNReal
 
-namespace MathlibExt.Probability.RegularVariationKaramata
-
-/-- `L : ℝ → ℝ` is *slowly varying* (at infinity) if it is positive on `(0, ∞)` and
-`L(cx) / L(x) → 1` as `x → ∞` for every `c > 0`. -/
-def IsSlowlyVarying (L : ℝ → ℝ) : Prop :=
-  (∀ x, 0 < x → 0 < L x) ∧
-  ∀ c : ℝ, 0 < c → Tendsto (fun x => L (c * x) / L x) atTop (𝓝 1)
-
-/-- `f` is *regularly varying* with index `ρ` if it can be written as `f x = x^ρ · L x`
-eventually as `x → ∞`, where `L` is slowly varying. -/
-def IsRegularlyVarying (f : ℝ → ℝ) (ρ : ℝ) : Prop :=
-  ∃ L : ℝ → ℝ, IsSlowlyVarying L ∧ ∀ᶠ x in atTop, f x = x ^ ρ * L x
-
-/-- The right tail probability `μ((x, ∞))` as a real number. -/
-def rightTail (μ : Measure ℝ) (x : ℝ) : ℝ := (μ (Set.Ioi x)).toReal
-
-/-- The left tail probability `μ((-∞, -x])` as a real number. -/
-def leftTail (μ : Measure ℝ) (x : ℝ) : ℝ := (μ (Set.Iic (-x))).toReal
-
-/-- The two-sided tail `μ(|X| > x)` written as the sum of the right and left tails. -/
-def combinedTail (μ : Measure ℝ) (x : ℝ) : ℝ := rightTail μ x + leftTail μ x
-
-/-- Tails are nonnegative. -/
-theorem rightTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ rightTail μ x :=
-  ENNReal.toReal_nonneg
-
-/-- Tails are nonnegative. -/
-theorem leftTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ leftTail μ x :=
-  ENNReal.toReal_nonneg
-
-/-- The combined tail is nonnegative. -/
-theorem combinedTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ combinedTail μ x :=
-  add_nonneg (rightTail_nonneg μ x) (leftTail_nonneg μ x)
-
-/-- For a probability measure, each one-sided tail is at most `1`. -/
-theorem rightTail_le_one (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    rightTail μ x ≤ 1 := by
-  unfold rightTail
-  have h : μ (Set.Ioi x) ≤ 1 := by
-    calc μ (Set.Ioi x) ≤ μ Set.univ := measure_mono (Set.subset_univ _)
-      _ = 1 := measure_univ
-  exact (ENNReal.toReal_le_toReal (measure_ne_top _ _) ENNReal.one_ne_top).mpr h
-
-/-- For a probability measure, each one-sided tail is at most `1`. -/
-theorem leftTail_le_one (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    leftTail μ x ≤ 1 := by
-  unfold leftTail
-  have h : μ (Set.Iic (-x)) ≤ 1 := by
-    calc μ (Set.Iic (-x)) ≤ μ Set.univ := measure_mono (Set.subset_univ _)
-      _ = 1 := measure_univ
-  exact (ENNReal.toReal_le_toReal (measure_ne_top _ _) ENNReal.one_ne_top).mpr h
-
-/-- For a probability measure, the combined tail is at most `2`. -/
-theorem combinedTail_le_two (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    combinedTail μ x ≤ 2 := by
-  unfold combinedTail
-  exact add_le_add (rightTail_le_one μ x) (leftTail_le_one μ x)
-    |>.trans_eq (by norm_num)
-
-/-- The combined tail is antitone. -/
-theorem antitone_combinedTail (μ : Measure ℝ) [IsFiniteMeasure μ] :
-    Antitone (combinedTail μ) := by
-  intro a b hab
-  unfold combinedTail rightTail leftTail
-  have h1 : (μ (Set.Ioi b)).toReal ≤ (μ (Set.Ioi a)).toReal :=
-    ENNReal.toReal_mono (measure_ne_top _ _)
-      (measure_mono (Set.Ioi_subset_Ioi hab))
-  have h2 : (μ (Set.Iic (-b))).toReal ≤ (μ (Set.Iic (-a))).toReal :=
-    ENNReal.toReal_mono (measure_ne_top _ _)
-      (measure_mono (Set.Iic_subset_Iic.mpr (neg_le_neg hab)))
-  exact add_le_add h1 h2
+namespace MathlibExt.Probability.RegularVariation
 
 /-- A regularly varying function has the expected ratio limit. -/
 theorem IsRegularlyVarying.ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
@@ -144,8 +77,9 @@ theorem IsRegularlyVarying.ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
   have hEv2 : ∀ᶠ x in atTop, T (c * x) = (c * x) ^ ρ * L (c * x) :=
     hmul.eventually hEv
   have hEq : ∀ᶠ x in atTop, T (c * x) / T x = c ^ ρ * (L (c * x) / L x) := by
-    filter_upwards [hEv, hEv2, eventually_gt_atTop (0 : ℝ)] with x hx hx2 hxpos
-    have hLx : L x ≠ 0 := ne_of_gt (hL.1 x hxpos)
+    filter_upwards [hEv, hEv2, hL.1, eventually_gt_atTop (0 : ℝ)]
+      with x hx hx2 hLpos hxpos
+    have hLx : L x ≠ 0 := ne_of_gt hLpos
     have hxr : x ^ ρ ≠ 0 := ne_of_gt (Real.rpow_pos_of_pos hxpos ρ)
     rw [hx, hx2, Real.mul_rpow hc.le hxpos.le]
     field_simp
@@ -154,14 +88,6 @@ theorem IsRegularlyVarying.ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
   refine Filter.Tendsto.congr' hEq'.symm ?_
   have h := (hL.2 c hc).const_mul (c ^ ρ)
   simpa using h
-
-/-- A regularly varying function is eventually positive. -/
-theorem IsRegularlyVarying.eventually_pos {T : ℝ → ℝ} {ρ : ℝ}
-    (hT : IsRegularlyVarying T ρ) : ∀ᶠ x in atTop, 0 < T x := by
-  obtain ⟨L, hL, hEv⟩ := hT
-  filter_upwards [hEv, eventually_gt_atTop (0 : ℝ)] with x hx hxpos
-  rw [hx]
-  exact mul_pos (Real.rpow_pos_of_pos hxpos ρ) (hL.1 x hxpos)
 
 /-- Telescoping product of ratios, for real-valued functions. -/
 private theorem prod_range_div_telescope {f : ℕ → ℝ} {n : ℕ}
@@ -714,4 +640,4 @@ theorem karamata_integral {W : ℝ → ℝ} {ρ β : ℝ}
     Filter.EventuallyEq.symm hEq
   exact Filter.Tendsto.congr' hEq' hDCT
 
-end MathlibExt.Probability.RegularVariationKaramata
+end MathlibExt.Probability.RegularVariation

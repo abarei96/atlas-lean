@@ -45,7 +45,7 @@ open scoped Topology ENNReal NNReal
 
 namespace MathlibExt.Probability.TruncatedMoment
 
-open MathlibExt.Probability.RegularVariationKaramata
+open MathlibExt.Probability.RegularVariation
 
 /-- The upper tail `(μ {y | s ≤ |y|}).toReal`. -/
 noncomputable def tailGe (μ : Measure ℝ) (s : ℝ) : ℝ := (μ {y : ℝ | s ≤ |y|}).toReal
@@ -65,18 +65,6 @@ theorem tailGe_le_one (μ : Measure ℝ) [IsProbabilityMeasure μ] (s : ℝ) :
       _ = 1 := measure_univ
   exact (ENNReal.toReal_le_toReal (measure_ne_top _ _) ENNReal.one_ne_top).mpr h
 
-theorem antitone_rightTail (μ : Measure ℝ) [IsFiniteMeasure μ] : Antitone (rightTail μ) := by
-  intro a b hab
-  unfold rightTail
-  exact ENNReal.toReal_mono (measure_ne_top _ _)
-    (measure_mono (Set.Ioi_subset_Ioi hab))
-
-theorem antitone_leftTail (μ : Measure ℝ) [IsFiniteMeasure μ] : Antitone (leftTail μ) := by
-  intro a b hab
-  unfold leftTail
-  exact ENNReal.toReal_mono (measure_ne_top _ _)
-    (measure_mono (Set.Iic_subset_Iic.mpr (neg_le_neg hab)))
-
 theorem antitone_tailGe (μ : Measure ℝ) [IsFiniteMeasure μ] : Antitone (tailGe μ) := by
   intro a b hab
   unfold tailGe
@@ -93,14 +81,13 @@ theorem antitone_tailGt (μ : Measure ℝ) [IsFiniteMeasure μ] : Antitone (tail
   intro y hy
   exact lt_of_le_of_lt hab hy
 
-/-- The upper tail is the combined tail plus the atom at `s`, for `s > 0`. -/
-theorem tailGe_eq_combinedTail_add_atom (μ : Measure ℝ) [IsProbabilityMeasure μ]
-    {s : ℝ} (hs : 0 < s) :
-    tailGe μ s = combinedTail μ s + (μ {s}).toReal := by
-  have hset : {y : ℝ | s ≤ |y|} = Set.Ici s ∪ Set.Iic (-s) := by
+/-- At nonnegative thresholds the strict absolute tail is the canonical combined tail. -/
+theorem tailGt_eq_combinedTail (μ : Measure ℝ) [IsFiniteMeasure μ]
+    {s : ℝ} (hs : 0 ≤ s) : tailGt μ s = combinedTail μ s := by
+  have hset : {y : ℝ | s < |y|} = Set.Ioi s ∪ Set.Iio (-s) := by
     ext y
-    simp only [Set.mem_ofPred_eq, Set.mem_union, Set.mem_Ici, Set.mem_Iic]
-    rw [le_abs]
+    simp only [Set.mem_ofPred_eq, Set.mem_union, Set.mem_Ioi, Set.mem_Iio]
+    rw [lt_abs]
     constructor
     · rintro (h | h)
       · exact Or.inl h
@@ -108,94 +95,70 @@ theorem tailGe_eq_combinedTail_add_atom (μ : Measure ℝ) [IsProbabilityMeasure
     · rintro (h | h)
       · exact Or.inl h
       · exact Or.inr (by linarith)
-  have hdisj : Disjoint (Set.Ici s) (Set.Iic (-s)) := by
+  have hdisj : Disjoint (Set.Ioi s) (Set.Iio (-s)) := by
     rw [Set.disjoint_left]
     intro y hy1 hy2
-    rw [Set.mem_Ici] at hy1
-    rw [Set.mem_Iic] at hy2
+    simp only [Set.mem_Ioi, Set.mem_Iio] at hy1 hy2
     linarith
-  have hIci : (μ (Set.Ici s)).toReal = (μ (Set.Ioi s)).toReal + (μ {s}).toReal := by
-    have hunion : Set.Ici s = Set.Ioi s ∪ {s} := by
-      ext y
-      simp only [Set.mem_Ici, Set.mem_union, Set.mem_Ioi, Set.mem_singleton_iff]
-      constructor
-      · intro h
-        rcases eq_or_lt_of_le h with h' | h'
-        · exact Or.inr h'.symm
-        · exact Or.inl h'
-      · rintro (h | h)
-        · exact le_of_lt h
-        · exact le_of_eq h.symm
-    have hdisj2 : Disjoint (Set.Ioi s) ({s} : Set ℝ) := by
-      rw [Set.disjoint_left]
-      intro y hy1 hy2
-      rw [Set.mem_singleton_iff] at hy2
-      rw [hy2] at hy1
-      exact lt_irrefl _ hy1
-    rw [hunion, measure_union hdisj2 (measurableSet_singleton s),
-      ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _)]
-  have hunion : tailGe μ s
-      = (μ (Set.Ici s)).toReal + (μ (Set.Iic (-s))).toReal := by
-    unfold tailGe
-    rw [hset, measure_union hdisj measurableSet_Iic,
-      ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _)]
-  rw [hunion, hIci]
-  unfold combinedTail rightTail leftTail
-  ring
+  unfold tailGt combinedTail rightTail leftTail
+  rw [hset, measure_union hdisj measurableSet_Iio,
+    ENNReal.toReal_add (measure_ne_top μ _) (measure_ne_top μ _)]
 
-/-- The lower tail is the combined tail minus the atom at `-s`, for `s > 0`. -/
-theorem tailGt_eq_combinedTail_sub_atom (μ : Measure ℝ) [IsProbabilityMeasure μ]
+/-- At a positive threshold the two distinct endpoint atoms give the non-strict tail. -/
+private theorem tailGe_eq_tailGt_add_atoms (μ : Measure ℝ) [IsProbabilityMeasure μ]
     {s : ℝ} (hs : 0 < s) :
-    tailGt μ s = combinedTail μ s - (μ {-s}).toReal := by
-  have hGe := tailGe_eq_combinedTail_add_atom μ hs
-  have hDiff : tailGe μ s - tailGt μ s = (μ {s}).toReal + (μ {-s}).toReal := by
-    have hset : {y : ℝ | s ≤ |y|} = {y : ℝ | s < |y|} ∪ ({s} ∪ {-s}) := by
-      ext y
-      simp only [Set.mem_ofPred_eq, Set.mem_union, Set.mem_singleton_iff]
-      constructor
-      · intro h
-        rcases eq_or_lt_of_le h with h' | h'
-        · have hy : y = s ∨ y = -s := (abs_eq hs.le).mp h'.symm
-          rcases hy with hy | hy
-          · exact Or.inr (Or.inl hy)
-          · exact Or.inr (Or.inr hy)
-        · exact Or.inl h'
-      · rintro (h | h | h)
-        · exact le_of_lt h
-        · rw [h, abs_of_pos hs]
-        · rw [h, abs_neg, abs_of_pos hs]
-    have hdisj : Disjoint {y : ℝ | s < |y|} ({s} ∪ {-s}) := by
+    tailGe μ s = tailGt μ s + (μ {s}).toReal + (μ {-s}).toReal := by
+  have hset : {y : ℝ | s ≤ |y|} = {y : ℝ | s < |y|} ∪ ({s} ∪ {-s}) := by
+    ext y
+    simp only [Set.mem_ofPred_eq, Set.mem_union, Set.mem_singleton_iff]
+    constructor
+    · intro h
+      rcases eq_or_lt_of_le h with h' | h'
+      · have hy : y = s ∨ y = -s := (abs_eq hs.le).mp h'.symm
+        rcases hy with hy | hy
+        · exact Or.inr (Or.inl hy)
+        · exact Or.inr (Or.inr hy)
+      · exact Or.inl h'
+    · rintro (h | h | h)
+      · exact le_of_lt h
+      · rw [h, abs_of_pos hs]
+      · rw [h, abs_neg, abs_of_pos hs]
+  have hdisj : Disjoint {y : ℝ | s < |y|} ({s} ∪ {-s}) := by
+    rw [Set.disjoint_left]
+    intro y hy1 hy2
+    rcases hy2 with hy2 | hy2
+    · rw [Set.mem_singleton_iff] at hy2
+      rw [hy2] at hy1
+      change s < |s| at hy1
+      rw [abs_of_pos hs] at hy1
+      exact lt_irrefl _ hy1
+    · rw [Set.mem_singleton_iff] at hy2
+      rw [hy2] at hy1
+      change s < |-s| at hy1
+      rw [abs_neg, abs_of_pos hs] at hy1
+      exact lt_irrefl _ hy1
+  have hmeas : MeasurableSet ({s} ∪ {-s} : Set ℝ) :=
+    (measurableSet_singleton s).union (measurableSet_singleton (-s))
+  have hunion : (μ ({s} ∪ {-s} : Set ℝ)).toReal
+      = (μ {s}).toReal + (μ {-s}).toReal := by
+    rw [measure_union (by
       rw [Set.disjoint_left]
       intro y hy1 hy2
-      rcases hy2 with hy2 | hy2
-      · rw [Set.mem_singleton_iff] at hy2
-        rw [hy2] at hy1
-        change s < |s| at hy1
-        rw [abs_of_pos hs] at hy1
-        exact lt_irrefl _ hy1
-      · rw [Set.mem_singleton_iff] at hy2
-        rw [hy2] at hy1
-        change s < |-s| at hy1
-        rw [abs_neg, abs_of_pos hs] at hy1
-        exact lt_irrefl _ hy1
-    have hmeas : MeasurableSet ({s} ∪ {-s} : Set ℝ) :=
-      (measurableSet_singleton s).union (measurableSet_singleton (-s))
-    have hunion : (μ ({s} ∪ {-s} : Set ℝ)).toReal
-        = (μ {s}).toReal + (μ {-s}).toReal := by
-      rw [measure_union (by
-        rw [Set.disjoint_left]
-        intro y hy1 hy2
-        rw [Set.mem_singleton_iff] at hy1 hy2
-        rw [hy1] at hy2
-        exact absurd hy2 (by intro h; linarith [hs])) (measurableSet_singleton (-s)),
-        ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _)]
-    have hge : tailGe μ s = tailGt μ s + ((μ {s}).toReal + (μ {-s}).toReal) := by
-      unfold tailGe tailGt
-      rw [hset, measure_union hdisj hmeas,
-        ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _), hunion]
-    linarith [hge, tailGe_nonneg μ s, tailGt_nonneg μ s]
-  linarith [hGe, hDiff, tailGe_nonneg μ s, tailGt_nonneg μ s,
-    combinedTail_nonneg μ s]
+      rw [Set.mem_singleton_iff] at hy1 hy2
+      rw [hy1] at hy2
+      exact absurd hy2 (by intro h; linarith [hs])) (measurableSet_singleton (-s)),
+      ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _)]
+  have hge : tailGe μ s = tailGt μ s + ((μ {s}).toReal + (μ {-s}).toReal) := by
+    unfold tailGe tailGt
+    rw [hset, measure_union hdisj hmeas,
+      ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _), hunion]
+  simpa only [add_assoc] using hge
+
+/-- The non-strict absolute tail adds both endpoint atoms to the canonical strict tail. -/
+theorem tailGe_eq_combinedTail_add_atoms (μ : Measure ℝ) [IsProbabilityMeasure μ]
+    {s : ℝ} (hs : 0 < s) :
+    tailGe μ s = combinedTail μ s + (μ {s}).toReal + (μ {-s}).toReal := by
+  rw [tailGe_eq_tailGt_add_atoms μ hs, tailGt_eq_combinedTail μ hs.le]
 
 /-- Right-tail difference equals the mass of the half-open interval. -/
 private theorem rightTail_sub_eq {μ : Measure ℝ} [IsFiniteMeasure μ] {a b : ℝ}
@@ -223,33 +186,22 @@ private theorem rightTail_sub_eq {μ : Measure ℝ} [IsFiniteMeasure μ] {a b : 
   unfold rightTail
   linarith [h2]
 
-/-- Left-tail difference equals the mass of the half-open interval. -/
+/-- A strict left-tail difference is the mass of the closed-open interval. -/
 private theorem leftTail_sub_eq {μ : Measure ℝ} [IsFiniteMeasure μ] {a b : ℝ}
     (hab : a ≤ b) :
-    leftTail μ a - leftTail μ b = (μ (Set.Ioc (-b) (-a))).toReal := by
-  have hunion : Set.Iic (-a) = Set.Iic (-b) ∪ Set.Ioc (-b) (-a) := by
-    ext y
-    simp only [Set.mem_Iic, Set.mem_union, Set.mem_Ioc]
-    constructor
-    · intro h
-      by_cases h' : -b < y
-      · exact Or.inr ⟨h', h⟩
-      · exact Or.inl (not_lt.mp h')
-    · rintro (h | h) <;> linarith
-  have hdisj : Disjoint (Set.Iic (-b)) (Set.Ioc (-b) (-a)) := by
+    leftTail μ a - leftTail μ b = (μ (Set.Ico (-b) (-a))).toReal := by
+  have hunion : Set.Iio (-a) = Set.Iio (-b) ∪ Set.Ico (-b) (-a) :=
+    (Set.Iio_union_Ico_eq_Iio (neg_le_neg hab)).symm
+  have hdisj : Disjoint (Set.Iio (-b)) (Set.Ico (-b) (-a)) := by
     rw [Set.disjoint_left]
     intro y hy1 hy2
-    exact absurd (lt_of_le_of_lt hy1 hy2.1) (lt_irrefl _)
-  have h : μ (Set.Iic (-b) ∪ Set.Ioc (-b) (-a))
-      = μ (Set.Iic (-b)) + μ (Set.Ioc (-b) (-a)) :=
-    measure_union hdisj measurableSet_Ioc
-  rw [← hunion] at h
-  have h2 : (μ (Set.Iic (-a))).toReal
-      = ((μ (Set.Iic (-b))) + (μ (Set.Ioc (-b) (-a)))).toReal :=
-    congrArg ENNReal.toReal h
-  rw [ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _)] at h2
+    exact (not_lt_of_ge hy2.1) hy1
+  have h : (μ (Set.Iio (-a))).toReal =
+      (μ (Set.Iio (-b))).toReal + (μ (Set.Ico (-b) (-a))).toReal := by
+    rw [hunion, measure_union hdisj measurableSet_Ico,
+      ENNReal.toReal_add (measure_ne_top μ _) (measure_ne_top μ _)]
   unfold leftTail
-  linarith [h2]
+  linarith [h]
 
 /-- The atom at `s` is bounded by the drop of the combined tail on `[(1-δ)s, s]`. -/
 private theorem atom_le_sub_combinedTail {μ : Measure ℝ} [IsProbabilityMeasure μ]
@@ -266,26 +218,28 @@ private theorem atom_le_sub_combinedTail {μ : Measure ℝ} [IsProbabilityMeasur
     apply Set.singleton_subset_iff.mpr
     exact ⟨by have hδs : 0 < δ * s := mul_pos hδ hs; nlinarith [hδs], le_refl _⟩
   have h3 : 0 ≤ leftTail μ ((1 - δ) * s) - leftTail μ s :=
-    sub_nonneg.mpr (antitone_leftTail μ h1)
+    sub_nonneg.mpr (leftTail_antitone μ h1)
   unfold combinedTail
   linarith [h2, h3]
 
-/-- The atom at `-s` is bounded by the drop of the combined tail on `[s, (1+δ)s]`. -/
+/-- For strict left tails, the negative endpoint atom is controlled by a drop below `s`. -/
 private theorem atom_neg_le_sub_combinedTail {μ : Measure ℝ} [IsProbabilityMeasure μ]
     {s δ : ℝ} (hs : 0 < s) (hδ : 0 < δ) :
-    (μ {-s}).toReal ≤ combinedTail μ s - combinedTail μ ((1 + δ) * s) := by
-  have h1 : s ≤ (1 + δ) * s := by
-    have h : (1 : ℝ) * s ≤ (1 + δ) * s :=
+    (μ {-s}).toReal ≤ combinedTail μ ((1 - δ) * s) - combinedTail μ s := by
+  have h1 : (1 - δ) * s ≤ s := by
+    have h : (1 - δ) * s ≤ 1 * s :=
       mul_le_mul_of_nonneg_right (by linarith) hs.le
     simpa using h
-  have h2 : (μ {-s}).toReal ≤ leftTail μ s - leftTail μ ((1 + δ) * s) := by
+  have h2 : (μ {-s}).toReal ≤ leftTail μ ((1 - δ) * s) - leftTail μ s := by
     rw [leftTail_sub_eq h1]
-    apply ENNReal.toReal_mono (measure_ne_top _ _)
+    apply ENNReal.toReal_mono (measure_ne_top μ _)
     apply measure_mono
     apply Set.singleton_subset_iff.mpr
-    exact ⟨by have hδs : 0 < δ * s := mul_pos hδ hs; nlinarith [hδs], le_refl _⟩
-  have h3 : 0 ≤ rightTail μ s - rightTail μ ((1 + δ) * s) :=
-    sub_nonneg.mpr (antitone_rightTail μ h1)
+    refine ⟨le_rfl, ?_⟩
+    have hδs : 0 < δ * s := mul_pos hδ hs
+    nlinarith [hδs]
+  have h3 : 0 ≤ rightTail μ ((1 - δ) * s) - rightTail μ s :=
+    sub_nonneg.mpr (rightTail_antitone μ h1)
   unfold combinedTail
   linarith [h2, h3]
 
@@ -413,54 +367,51 @@ theorem tailGe_ratio_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : 
         exact hA
       filter_upwards [hLe, hUp] with x hx1 hx2
       linarith [hx1, hx2]
-  have hEq : (fun x => tailGe μ x / combinedTail μ x)
-      =ᶠ[atTop] (fun x => 1 + (μ {x}).toReal / combinedTail μ x) := by
-    filter_upwards [hRV.eventually_pos, eventually_gt_atTop (0:ℝ)] with x hx hxpos
-    rw [tailGe_eq_combinedTail_add_atom μ hxpos, add_div, div_self hx.ne']
-  have hlim : Tendsto (fun x => 1 + (μ {x}).toReal / combinedTail μ x) atTop (𝓝 (1 + 0)) :=
-    tendsto_const_nhds.add hAtom
-  have h' := Filter.Tendsto.congr' hEq.symm hlim
-  simpa using h'
-
-/-- The lower tail is asymptotically the combined tail. -/
-theorem tailGt_ratio_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
-    (hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
-    Tendsto (fun x => tailGt μ x / combinedTail μ x) atTop (𝓝 1) := by
-  have hAtom : Tendsto (fun x => (μ {-x}).toReal / combinedTail μ x) atTop (𝓝 0) := by
+  have hAtomNeg : Tendsto (fun x => (μ {-x}).toReal / combinedTail μ x) atTop (𝓝 0) := by
     rw [tendsto_order]
     constructor
     · intro b hb
       filter_upwards [hRV.eventually_pos] with x hx
       exact lt_of_lt_of_le hb (div_nonneg ENNReal.toReal_nonneg hx.le)
     · intro b hb
-      obtain ⟨δ, hδ0, hδr⟩ := exists_delta_rpow_pos hα hb
-      have hRatio : Tendsto (fun x => combinedTail μ ((1 + δ) * x) / combinedTail μ x)
-          atTop (𝓝 ((1 + δ) ^ (-α))) := hRV.ratio_tendsto (by linarith)
-      have hLow : ∀ᶠ x in atTop,
-          1 - b < combinedTail μ ((1 + δ) * x) / combinedTail μ x := by
-        exact (tendsto_order.mp hRatio).1 (1 - b) hδr
+      obtain ⟨δ, hδ0, _hδ1, hδr⟩ := exists_delta_rpow_neg hα hb
+      have hRatio : Tendsto (fun x => combinedTail μ ((1 - δ) * x) / combinedTail μ x)
+          atTop (𝓝 ((1 - δ) ^ (-α))) := hRV.ratio_tendsto (by linarith)
+      have hUp : ∀ᶠ x in atTop,
+          combinedTail μ ((1 - δ) * x) / combinedTail μ x < 1 + b := by
+        exact (tendsto_order.mp hRatio).2 (1 + b) (by linarith)
       have hLe : ∀ᶠ x in atTop,
           (μ {-x}).toReal / combinedTail μ x
-            ≤ 1 - combinedTail μ ((1 + δ) * x) / combinedTail μ x := by
+            ≤ combinedTail μ ((1 - δ) * x) / combinedTail μ x - 1 := by
         filter_upwards [hRV.eventually_pos, eventually_gt_atTop (0:ℝ)] with x hx hxpos
         have hA := atom_neg_le_sub_combinedTail (μ := μ) (s := x) (δ := δ) hxpos hδ0
         rw [div_le_iff₀ hx]
-        have hEq : (1 - combinedTail μ ((1 + δ) * x) / combinedTail μ x)
+        have hEq : (combinedTail μ ((1 - δ) * x) / combinedTail μ x - 1)
             * combinedTail μ x
-            = combinedTail μ x - combinedTail μ ((1 + δ) * x) := by
-          rw [sub_mul, one_mul, div_mul_cancel₀ _ hx.ne']
+            = combinedTail μ ((1 - δ) * x) - combinedTail μ x := by
+          rw [sub_mul, div_mul_cancel₀ _ hx.ne', one_mul]
         rw [hEq]
         exact hA
-      filter_upwards [hLe, hLow] with x hx1 hx2
+      filter_upwards [hLe, hUp] with x hx1 hx2
       linarith [hx1, hx2]
-  have hEq : (fun x => tailGt μ x / combinedTail μ x)
-      =ᶠ[atTop] (fun x => 1 - (μ {-x}).toReal / combinedTail μ x) := by
-    filter_upwards [hRV.eventually_pos, eventually_gt_atTop (0:ℝ)] with x hx hxpos
-    rw [tailGt_eq_combinedTail_sub_atom μ hxpos, sub_div, div_self hx.ne']
-  have hlim : Tendsto (fun x => 1 - (μ {-x}).toReal / combinedTail μ x) atTop (𝓝 (1 - 0)) :=
-    tendsto_const_nhds.sub hAtom
+  have hEq : (fun x => tailGe μ x / combinedTail μ x)
+      =ᶠ[atTop] (fun x => 1 + (μ {x}).toReal / combinedTail μ x
+        + (μ {-x}).toReal / combinedTail μ x) := by
+    filter_upwards [hRV.eventually_pos, eventually_gt_atTop (0 : ℝ)] with x hx hxpos
+    rw [tailGe_eq_combinedTail_add_atoms μ hxpos, add_div, add_div, div_self hx.ne']
+  have hlim : Tendsto (fun x => 1 + (μ {x}).toReal / combinedTail μ x
+      + (μ {-x}).toReal / combinedTail μ x) atTop (𝓝 (1 + 0 + 0)) :=
+    (tendsto_const_nhds.add hAtom).add hAtomNeg
   have h' := Filter.Tendsto.congr' hEq.symm hlim
   simpa using h'
+
+/-- The lower tail is asymptotically the combined tail. -/
+theorem tailGt_ratio_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
+    (_hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    Tendsto (fun x => tailGt μ x / combinedTail μ x) atTop (𝓝 1) := by
+  refine (tendsto_const_nhds : Tendsto (fun _ : ℝ => (1 : ℝ)) atTop (𝓝 1)).congr' ?_
+  filter_upwards [hRV.eventually_pos, eventually_ge_atTop (0 : ℝ)] with x hx hx0
+  rw [tailGt_eq_combinedTail μ hx0, div_self hx.ne']
 
 theorem eventually_pos_tailGe {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
     (hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
@@ -502,8 +453,8 @@ private theorem intervalIntegrable_tailGe_sqrt {μ : Measure ℝ} [IsProbability
     exact tailGe_le_one μ _
 
 /-- Layer-cake formula for the truncated second moment, in terms of the upper
-tail `tailGe`. The `x ^ 2 * tailGt μ x` correction is the mass of the shell
-`{|y| = x}` counted twice in the naive layer cake. -/
+tail `tailGe`. The term `x ^ 2 * tailGt μ x` removes the contribution
+from points with `|y| > x`, which lie outside the closed truncation interval. -/
 theorem layerCake {μ : Measure ℝ} [IsProbabilityMeasure μ] {x : ℝ} (hx : 0 ≤ x) :
     ∫ y in Set.Icc (-x) x, y ^ 2 ∂μ
       = 2 * (∫ t in (0:ℝ)..x, t * tailGe μ t) - x ^ 2 * tailGt μ x := by

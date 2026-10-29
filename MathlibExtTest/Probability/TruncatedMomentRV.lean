@@ -37,7 +37,7 @@ open scoped Topology ENNReal NNReal
 namespace MathlibExtTest.TruncatedMomentRV
 
 open MathlibExt.Probability.TruncatedMoment
-open MathlibExt.Probability.RegularVariationKaramata
+open MathlibExt.Probability.RegularVariation
 
 /-- Pareto density (real-valued): `α * x ^ (-α - 1)` on `[1, ∞)`, `0` elsewhere. -/
 noncomputable def paretoDensityReal (α : ℝ) (x : ℝ) : ℝ :=
@@ -174,17 +174,17 @@ theorem pareto_rightTail {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
 theorem pareto_leftTail_zero {α : ℝ} {x : ℝ} (hx : 1 ≤ x) :
     leftTail (paretoMeasure α) x = 0 := by
   unfold leftTail
-  have h : (paretoMeasure α) (Set.Iic (-x)) = 0 := by
+  have h : (paretoMeasure α) (Set.Iio (-x)) = 0 := by
     unfold paretoMeasure
-    rw [withDensity_apply _ measurableSet_Iic]
+    rw [withDensity_apply _ measurableSet_Iio]
     have hEq : Set.EqOn (fun y => ENNReal.ofReal (paretoDensityReal α y)) (fun _ => 0)
-        (Set.Iic (-x)) := by
+        (Set.Iio (-x)) := by
       intro y hy
-      simp only [Set.mem_Iic] at hy
+      simp only [Set.mem_Iio] at hy
       show ENNReal.ofReal (paretoDensityReal α y) = 0
       rw [paretoDensityReal_eq_zero (by linarith : y < 1)]
       simp
-    rw [setLIntegral_congr_fun measurableSet_Iic hEq]
+    rw [setLIntegral_congr_fun measurableSet_Iio hEq]
     exact lintegral_zero
   rw [h]
   simp
@@ -196,15 +196,15 @@ theorem pareto_combinedTail {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
 
 theorem pareto_tailGe {α : ℝ} (hα : 0 < α) {t : ℝ} (ht : 1 ≤ t) :
     tailGe (paretoMeasure α) t = t ^ (-α) := by
-  rw [@tailGe_eq_combinedTail_add_atom (paretoMeasure α) ⟨pareto_prob hα⟩ t
+  rw [@tailGe_eq_combinedTail_add_atoms (paretoMeasure α) ⟨pareto_prob hα⟩ t
       (show (0:ℝ) < t by linarith),
-    pareto_combinedTail hα ht, pareto_atom t, ENNReal.toReal_zero, add_zero]
+    pareto_combinedTail hα ht, pareto_atom t, pareto_atom (-t), ENNReal.toReal_zero, add_zero, add_zero]
 
 theorem pareto_tailGt {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
     tailGt (paretoMeasure α) x = x ^ (-α) := by
-  rw [@tailGt_eq_combinedTail_sub_atom (paretoMeasure α) ⟨pareto_prob hα⟩ x
-      (show (0:ℝ) < x by linarith),
-    pareto_combinedTail hα hx, pareto_atom (-x), ENNReal.toReal_zero, sub_zero]
+  let _ : IsProbabilityMeasure (paretoMeasure α) := ⟨pareto_prob hα⟩
+  rw [tailGt_eq_combinedTail (paretoMeasure α) (by linarith : (0 : ℝ) ≤ x),
+    pareto_combinedTail hα hx]
 
 theorem pareto_tailGe_one {α : ℝ} (hα : 0 < α)
     {t : ℝ} (ht1 : t ≤ 1) :
@@ -339,10 +339,9 @@ theorem pareto_ratio_direct {α : ℝ} (hα : 0 < α) (hα2 : α < 2) :
 
 theorem pareto_regularlyVarying {α : ℝ} (hα : 0 < α) :
     IsRegularlyVarying (combinedTail (paretoMeasure α)) (-α) := by
-  refine ⟨fun _ => 1, ⟨fun _ _ => one_pos, fun c _ => ?_⟩, ?_⟩
-  · simp
-  · filter_upwards [eventually_ge_atTop (1:ℝ)] with x hx
-    rw [pareto_combinedTail hα hx, mul_one]
+  apply (isRegularlyVarying_rpow (-α)).of_eventuallyEq
+  filter_upwards [eventually_ge_atTop (1 : ℝ)] with x hx
+  simpa using (pareto_combinedTail hα hx).symm
 
 theorem pareto_ratio_via_theorem {α : ℝ} (hα : 0 < α) (hα2 : α < 2) :
     Tendsto (fun x => (∫ y in Set.Icc (-x) x, y ^ 2 ∂(paretoMeasure α))
