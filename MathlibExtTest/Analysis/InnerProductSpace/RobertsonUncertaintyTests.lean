@@ -105,6 +105,7 @@ omit [CompleteSpace E] in
 theorem meanValue_pauliLikeX {x y : E} (hx : ‖x‖ = 1) (hxy : ⟪x, y⟫_ℂ = 0) :
     meanValue (pauliLikeX x y) x = 0 := by
   have hyx := hyx_of hxy
+  rw [meanValue_of_norm_eq_one _ hx]
   show (⟪pauliLikeX x y x, x⟫_ℂ).re = 0
   rw [pauliLikeX_apply hx hxy, hyx]
   simp
@@ -114,6 +115,7 @@ omit [CompleteSpace E] in
 theorem meanValue_pauliLikeY {x y : E} (hx : ‖x‖ = 1) (hxy : ⟪x, y⟫_ℂ = 0) :
     meanValue (pauliLikeY x y) x = 0 := by
   have hyx := hyx_of hxy
+  rw [meanValue_of_norm_eq_one _ hx]
   show (⟪pauliLikeY x y x, x⟫_ℂ).re = 0
   rw [pauliLikeY_apply hx hxy, inner_smul_left, hyx]
   simp
@@ -146,7 +148,7 @@ omit [CompleteSpace E] in
 theorem variance_pauliLikeX {x y : E} (hx : ‖x‖ = 1) (hy : ‖y‖ = 1)
     (hxy : ⟪x, y⟫_ℂ = 0) :
     variance (pauliLikeX x y) x = 1 := by
-  rw [variance, centered_pauliLikeX hx hxy, hy]
+  rw [variance, centered_pauliLikeX hx hxy, hx, hy]
   norm_num
 
 omit [CompleteSpace E] in
@@ -154,7 +156,7 @@ omit [CompleteSpace E] in
 theorem variance_pauliLikeY {x y : E} (hx : ‖x‖ = 1) (hy : ‖y‖ = 1)
     (hxy : ⟪x, y⟫_ℂ = 0) :
     variance (pauliLikeY x y) x = 1 := by
-  rw [variance, centered_pauliLikeY hx hxy, norm_smul, Complex.norm_I, hy]
+  rw [variance, centered_pauliLikeY hx hxy, norm_smul, Complex.norm_I, hx, hy]
   norm_num
 
 /-- The commutator expectation of the Pauli-like pair has norm `2`. -/
@@ -213,6 +215,7 @@ example (x y : E) :
 /-- The identity operator on `ℂ` has zero variance in every unit state. -/
 example (x : ℂ) (hx : ‖x‖ = 1) : variance (1 : ℂ →L[ℂ] ℂ) x = 0 := by
   have hmean : meanValue (1 : ℂ →L[ℂ] ℂ) x = 1 := by
+    rw [meanValue_of_norm_eq_one _ hx]
     show (⟪(1 : ℂ →L[ℂ] ℂ) x, x⟫_ℂ).re = 1
     simp [inner_self_eq_norm_sq_to_K, hx]
   rw [variance, centered, hmean]
@@ -257,12 +260,14 @@ theorem identity_variance_two : variance (1 : ℂ →L[ℂ] ℂ) (2 : ℂ) = 0 :
   norm_num [variance, centered, meanValue, ContinuousLinearMap.rayleighQuotient,
     ContinuousLinearMap.reApplyInnerSelf_apply, inner_self_eq_norm_sq_to_K]
 
+omit [CompleteSpace E] in
 /-- Expectation depends on a ray, with Mathlib's canonical scalar invariance. -/
 theorem mean_ray_invariant (A : E →L[ℂ] E) (x : E) {c : ℂ} (hc : c ≠ 0) :
     meanValue A (c • x) = meanValue A x := by
   change A.rayleighQuotient (c • x) = A.rayleighQuotient x
   exact A.rayleigh_smul x hc
 
+omit [CompleteSpace E] in
 /-- Normalized variance depends on a ray. -/
 theorem variance_ray_invariant (A : E →L[ℂ] E) (x : E) {c : ℂ} (hc : c ≠ 0) :
     variance A (c • x) = variance A x :=

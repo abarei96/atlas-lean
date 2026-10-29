@@ -8,8 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
-public import Mathlib.Analysis.InnerProductSpace.Adjoint
-public import Mathlib.Analysis.InnerProductSpace.Basic
+public import Mathlib.Analysis.InnerProductSpace.Rayleigh
 
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
@@ -40,11 +39,11 @@ This is a companion to the Hilbert-space / spectral material of
 `v1/Atlas/IntroductionToFunctionalAnalysis/code/HilbertSpace.lean` and
 `v1/Atlas/IntroductionToFunctionalAnalysis/code/SpectralTheory.lean`
 (self-adjoint operators, expectation values `⟪A x, x⟫`). It is not one of
-the 72 v1 targets, and it is in neither the pinned Mathlib (which has no
-uncertainty principle for operators) nor base MathlibExt (which has no
-uncertainty content at all; the Donoho–Stark principle for finite abelian
-groups is batch 73's PR, a different setting). The position–momentum form,
-with unbounded operators, is not claimed here.
+the 72 v1 targets. `MathlibExt.Analysis.Fourier.FiniteAbelianUncertainty`
+contains the distinct Donoho–Stark support-product principle for finite
+abelian groups. Here the scope is bounded self-adjoint operators and
+unit-state Robertson–Schrödinger inequalities. The position–momentum form
+for unbounded operators is not claimed.
 
 Sources: H. P. Robertson, "The uncertainty principle", Physical Review 34
 (1929), 163–164; E. Schrödinger, "Zum Heisenbergschen Unschärfeprinzip",
@@ -53,9 +52,9 @@ Sitzungsberichte der Preußischen Akademie der Wissenschaften (1930),
 
 ## Main declarations
 
-* `meanValue` : the expectation value `(⟪A x, x⟫).re`.
+* `meanValue` : the canonical real Rayleigh quotient, the normalized expectation.
 * `centered` : the centered vector `A x - meanValue A x • x`.
-* `variance` : the variance `‖centered A x‖²`.
+* `variance` : `‖centered A x‖² / ‖x‖²`, agreeing with the unit-state squared norm.
 * `commutator_inner` : commutator expectation as a skew inner product.
 * `norm_commutator_inner_eq` : its norm is `2 * |im ⟪u, v⟫|`.
 * `schrodinger` : the Robertson–Schrödinger inequality.
@@ -71,55 +70,69 @@ open scoped _root_.InnerProductSpace InnerProduct
 
 variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E] [CompleteSpace E]
 
-/-- The **expectation value** of a bounded operator `A` in the state `x`:
-the real part of `⟪A x, x⟫`. For self-adjoint `A` this is the whole
-inner product (`inner_self_of_isSelfAdjoint`). -/
+/-- The normalized real expectation is Mathlib's canonical Rayleigh quotient.
+For a nonzero state and self-adjoint observable it is the physical expectation.
+At zero this total definition is zero; zero is not a physical state. -/
 noncomputable def meanValue (A : E →L[ℂ] E) (x : E) : ℝ :=
-  (⟪A x, x⟫_ℂ).re
+  A.rayleighQuotient x
 
-/-- The **centered vector** of `A` at `x`: `A x` with its expectation
-value removed. Its squared norm is the variance (`variance`). -/
+omit [CompleteSpace E] in
+/-- On a unit vector, normalized expectation equals the original quadratic mean. -/
+theorem meanValue_of_norm_eq_one (A : E →L[ℂ] E) {x : E} (hx : ‖x‖ = 1) :
+    meanValue A x = (⟪A x, x⟫_ℂ).re := by
+  simp [meanValue, ContinuousLinearMap.rayleighQuotient,
+    ContinuousLinearMap.reApplyInnerSelf_apply, hx]
+
+/-- The centered vector subtracts the normalized real expectation times the state.
+Its squared norm divided by the squared state norm is `variance`. -/
 noncomputable def centered (A : E →L[ℂ] E) (x : E) : E :=
   A x - (meanValue A x : ℂ) • x
 
-/-- The **variance** of a bounded operator `A` in the state `x`:
-the squared norm of the centered vector. -/
+/-- Normalized variance is the centered squared norm divided by the squared state norm.
+For a nonzero state and self-adjoint observable it is the physical variance.
+The totalized value at zero is zero. Off the unit sphere this corrects the raw
+quadratic quantities; agreement with the original formulas is asserted only for unit states. -/
 noncomputable def variance (A : E →L[ℂ] E) (x : E) : ℝ :=
-  ‖centered A x‖ ^ 2
+  ‖centered A x‖ ^ 2 / ‖x‖ ^ 2
+
+omit [CompleteSpace E] in
+/-- On the unit sphere, normalized variance is the centered squared norm. -/
+theorem variance_of_norm_eq_one (A : E →L[ℂ] E) {x : E} (hx : ‖x‖ = 1) :
+    variance A x = ‖centered A x‖ ^ 2 := by
+  simp [variance, hx]
 
 omit [CompleteSpace E] in
 theorem variance_nonneg (A : E →L[ℂ] E) (x : E) : 0 ≤ variance A x :=
-  sq_nonneg _
+  div_nonneg (sq_nonneg _) (sq_nonneg _)
 
-/-- For a self-adjoint operator, the expectation inner product is real:
-it equals its real part, the mean value. -/
+omit [CompleteSpace E] in
+/-- Nonzero scalar multiplication does not change normalized variance. -/
+theorem variance_smul (A : E →L[ℂ] E) (x : E) {c : ℂ} (hc : c ≠ 0) :
+    variance A (c • x) = variance A x := by
+  have hcenter : centered A (c • x) = c • centered A x := by
+    simp only [centered, meanValue, A.map_smul, A.rayleigh_smul x hc,
+      smul_sub, smul_smul]
+    rw [mul_comm c (A.rayleighQuotient x : ℂ)]
+  rw [variance, variance, hcenter, norm_smul, norm_smul, mul_pow, mul_pow]
+  exact mul_div_mul_left _ _ (pow_ne_zero 2 (norm_ne_zero_iff.mpr hc))
+
+/-- For a self-adjoint operator, the expectation inner product is the normalized
+mean multiplied by the squared state norm. The norm factor is required off the unit sphere. -/
 theorem inner_self_of_isSelfAdjoint {A : E →L[ℂ] E} (hA : IsSelfAdjoint A) (x : E) :
-    ⟪A x, x⟫_ℂ = (meanValue A x : ℂ) := by
-  have hAdj : A† = A := ContinuousLinearMap.isSelfAdjoint_iff'.mp hA
-  have hsym : ⟪A x, x⟫_ℂ = ⟪x, A x⟫_ℂ := by
-    rw [← ContinuousLinearMap.adjoint_inner_right A x x, hAdj]
-  have him : (⟪A x, x⟫_ℂ).im = 0 := by
-    have hconj := inner_conj_symm (𝕜 := ℂ) (A x) x
-    rw [← hsym] at hconj
-    have h := congrArg Complex.im hconj
-    rw [Complex.conj_im] at h
-    linarith
-  apply Complex.ext
-  · simp [meanValue]
-  · simp [meanValue, him]
+    ⟪A x, x⟫_ℂ = ((meanValue A x * ‖x‖ ^ 2 : ℝ) : ℂ) := by
+  rw [← hA.isSymmetric.coe_reApplyInnerSelf_apply x]
+  congr 1
+  change A.reApplyInnerSelf x = meanValue A x * ‖x‖ ^ 2
+  by_cases hx : x = 0
+  · simp [hx, meanValue, ContinuousLinearMap.rayleighQuotient,
+      ContinuousLinearMap.reApplyInnerSelf_apply]
+  · simp [meanValue, ContinuousLinearMap.rayleighQuotient,
+      div_mul_cancel₀ _ (pow_ne_zero 2 (norm_ne_zero_iff.mpr hx))]
 
-/-- For a self-adjoint operator, the flipped expectation inner product
-is also the (real) mean value. -/
+/-- The flipped expectation has the same necessary squared-state-norm factor. -/
 theorem inner_right_of_isSelfAdjoint {A : E →L[ℂ] E} (hA : IsSelfAdjoint A) (x : E) :
-    ⟪x, A x⟫_ℂ = (meanValue A x : ℂ) := by
-  rw [← inner_conj_symm (𝕜 := ℂ) x (A x), inner_self_of_isSelfAdjoint hA x]
-  simp
-
-/-- Moving a self-adjoint operator across an inner product. -/
-theorem inner_apply_of_isSelfAdjoint {A : E →L[ℂ] E} (hA : IsSelfAdjoint A) (x y : E) :
-    ⟪A x, y⟫_ℂ = ⟪x, A y⟫_ℂ := by
-  rw [← ContinuousLinearMap.adjoint_inner_right A x y,
-    ContinuousLinearMap.isSelfAdjoint_iff'.mp hA]
+    ⟪x, A x⟫_ℂ = ((meanValue A x * ‖x‖ ^ 2 : ℝ) : ℂ) := by
+  rw [← hA.isSymmetric.apply_clm x x, inner_self_of_isSelfAdjoint hA x]
 
 /-- The inner product of two centered vectors, for self-adjoint
 operators at a unit vector: the uncentered inner product minus the
@@ -143,7 +156,7 @@ theorem commutator_inner {A B : E →L[ℂ] E} (hA : IsSelfAdjoint A) (hB : IsSe
       = ⟪centered B x, centered A x⟫_ℂ - ⟪centered A x, centered B x⟫_ℂ := by
   rw [sub_apply, ContinuousLinearMap.comp_apply,
     ContinuousLinearMap.comp_apply, inner_sub_left,
-    inner_apply_of_isSelfAdjoint hA (B x) x, inner_apply_of_isSelfAdjoint hB (A x) x,
+    hA.isSymmetric.apply_clm (B x) x, hB.isSymmetric.apply_clm (A x) x,
     inner_centered hB hA hx, inner_centered hA hB hx]
   ring
 
@@ -198,7 +211,7 @@ theorem schrodinger {A B : E →L[ℂ] E} (hA : IsSelfAdjoint A) (hB : IsSelfAdj
     norm_inner_le_norm _ _
   have hCS2 : ‖⟪centered A x, centered B x⟫_ℂ‖ ^ 2 ≤ variance A x * variance B x := by
     have h := pow_le_pow_left₀ (norm_nonneg _) hCS 2
-    rwa [mul_pow] at h
+    simpa only [variance, hx, one_pow, div_one, mul_pow] using h
   have hnormSq : ‖⟪centered A x, centered B x⟫_ℂ‖ ^ 2
       = (⟪centered A x, centered B x⟫_ℂ).re ^ 2
         + (⟪centered A x, centered B x⟫_ℂ).im ^ 2 := by
@@ -245,7 +258,7 @@ theorem variance_eq {A : E →L[ℂ] E} (hA : IsSelfAdjoint A) {x : E} (hx : ‖
       hAA, inner_self_eq_norm_sq_to_K (𝕜 := ℂ) x, hx]
     simp [Complex.conj_ofReal]
     ring
-  rw [variance, ← inner_self_eq_norm_sq (𝕜 := ℂ), hinner]
+  rw [variance, hx, one_pow, div_one, ← inner_self_eq_norm_sq (𝕜 := ℂ), hinner]
   show (⟪(A * A) x, x⟫_ℂ - (meanValue A x : ℂ) ^ 2).re
       = (⟪(A * A) x, x⟫_ℂ).re - (meanValue A x) ^ 2
   rw [Complex.sub_re]
