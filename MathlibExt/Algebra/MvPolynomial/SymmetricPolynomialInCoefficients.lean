@@ -30,6 +30,8 @@ expression `q` in the elementary symmetric polynomials, depending only on
 `α : Fin n → F`, that same `q`, evaluated at the signed coefficients
 `(-1)^(i+1) * P.coeff (n - (i+1))` of `P`, equals `f` evaluated at the
 roots, by Vieta's formulas.
+The factorization into `n` linear factors is the only polynomial hypothesis;
+it implies monicity, splitting, and natural degree `n`.
 -/
 
 @[expose] public section
@@ -49,8 +51,7 @@ theorem symmetric_polynomial_in_esymm
     ∃ q : MvPolynomial (Fin n) F,
       f = MvPolynomial.aeval
           (fun i : Fin n => MvPolynomial.esymm (Fin n) F (i.val + 1)) q ∧
-        ∀ {P : Polynomial F} {α : Fin n → F}, P.Monic → P.Splits →
-          P.natDegree = n →
+        ∀ {P : Polynomial F} {α : Fin n → F},
           P = ∏ i : Fin n, (Polynomial.X - Polynomial.C (α i)) →
           MvPolynomial.eval α f =
             MvPolynomial.eval
@@ -65,7 +66,16 @@ theorem symmetric_polynomial_in_esymm
     change ((MvPolynomial.esymmAlgHom (Fin n) F n) q).val = _
     exact MvPolynomial.esymmAlgHom_apply (σ := Fin n) q
   refine ⟨q, hfq, ?_⟩
-  intro P α hP hsplit hn hα
+  intro P α hα
+  have hP : P.Monic := by
+    rw [hα]
+    exact Polynomial.monic_prod_X_sub_C α Finset.univ
+  have hsplit : P.Splits := by
+    rw [hα]
+    exact Polynomial.Splits.prod (fun i _ => Polynomial.Splits.X_sub_C (α i))
+  have hn : P.natDegree = n := by
+    rw [hα, Polynomial.natDegree_finsetProd_X_sub_C_eq_card]
+    simp
   suffices h : ∀ i : Fin n,
       MvPolynomial.eval α (MvPolynomial.esymm (Fin n) F (i.val + 1)) =
         (-1 : F) ^ (i.val + 1) * P.coeff (n - (i.val + 1)) by

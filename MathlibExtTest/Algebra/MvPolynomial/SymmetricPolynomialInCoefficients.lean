@@ -26,8 +26,7 @@ coefficients witnessing each symmetric evaluation. A one-variable case and
 a constant symmetric polynomial are also covered.
 -/
 
-/-- For a product of linear factors, the monic / split / degree hypotheses
-of `Polynomial.symmetric_polynomial_in_esymm` hold. -/
+/-- A product of `n` linear factors is monic, splits, and has natural degree `n`. -/
 private theorem prod_X_sub_C_monic_splits_natDegree (n : ℕ) (α : Fin n → ℚ) :
     (∏ i : Fin n, (Polynomial.X - Polynomial.C (α i))).Monic ∧
     (∏ i : Fin n, (Polynomial.X - Polynomial.C (α i))).Splits ∧
@@ -68,10 +67,9 @@ example : ∃ q : MvPolynomial (Fin 2) ℚ,
         (fun i : Fin 2 => (-1 : ℚ) ^ (i.val + 1) *
           Polynomial.coeff (∏ j : Fin 2, (Polynomial.X - Polynomial.C (![1, 2] j)))
             (2 - (i.val + 1))) q := by
-  obtain ⟨hP, hsplit, hn⟩ := prod_X_sub_C_monic_splits_natDegree 2 ![1, 2]
   obtain ⟨q, -, hq⟩ := Polynomial.symmetric_polynomial_in_esymm
     (MvPolynomial.esymm (Fin 2) ℚ 1) (MvPolynomial.esymm_isSymmetric (Fin 2) ℚ 1)
-  exact ⟨q, hq hP hsplit hn rfl⟩
+  exact ⟨q, hq rfl⟩
 
 /-- A constant symmetric polynomial evaluated at the roots is a polynomial in
 the signed coefficients (the one-variable case, root `3`). -/
@@ -81,10 +79,9 @@ example : ∃ q : MvPolynomial (Fin 1) ℚ,
         (fun i : Fin 1 => (-1 : ℚ) ^ (i.val + 1) *
           Polynomial.coeff (∏ j : Fin 1, (Polynomial.X - Polynomial.C (![3] j)))
             (1 - (i.val + 1))) q := by
-  obtain ⟨hP, hsplit, hn⟩ := prod_X_sub_C_monic_splits_natDegree 1 ![3]
   obtain ⟨q, -, hq⟩ := Polynomial.symmetric_polynomial_in_esymm
     (MvPolynomial.C (5 : ℚ)) (MvPolynomial.IsSymmetric.C 5)
-  exact ⟨q, hq hP hsplit hn rfl⟩
+  exact ⟨q, hq rfl⟩
 
 /-- The witness `q` depends only on the symmetric polynomial, not on the
 split polynomial: one and the same `q` works for the two distinct root
@@ -106,6 +103,4 @@ example : ∃ q : MvPolynomial (Fin 2) ℚ,
     (MvPolynomial.esymm (Fin 2) ℚ 1 + MvPolynomial.esymm (Fin 2) ℚ 2)
     ((MvPolynomial.esymm_isSymmetric (Fin 2) ℚ 1).add
       (MvPolynomial.esymm_isSymmetric (Fin 2) ℚ 2))
-  obtain ⟨hP₁, hsplit₁, hn₁⟩ := prod_X_sub_C_monic_splits_natDegree 2 ![1, 2]
-  obtain ⟨hP₂, hsplit₂, hn₂⟩ := prod_X_sub_C_monic_splits_natDegree 2 ![1, 3]
-  exact ⟨q, hq hP₁ hsplit₁ hn₁ rfl, hq hP₂ hsplit₂ hn₂ rfl⟩
+  exact ⟨q, hq rfl, hq rfl⟩
