@@ -30,7 +30,7 @@ theorem exponential_log_of_lt_one {t : ℝ} (ht : t < 1) :
   simp_rw [inner_oneVector]
   rw [lintegral_exp_of_lt_one ht, ENNReal.log_ofReal_of_pos
     (div_pos zero_lt_one (sub_pos.mpr ht))]
-  simp [Real.log_div, ne_of_gt (sub_pos.mpr ht)]
+  simp
 
 /-- The boundary t=1 and all larger directions have an infinite log moment. -/
 theorem exponential_log_of_one_le {t : ℝ} (ht : 1 ≤ t) :
@@ -73,7 +73,6 @@ theorem exponential_rate_of_pos {x : ℝ} (hx : 0 < x) :
         simp only [one_div, Real.log_inv]
         dsimp [t]
         field_simp
-        ring
       rw [hvalue]
       exact MathlibExt.Probability.LegendreTransform.le_legendreTransform
   unfold cramerRateFunction

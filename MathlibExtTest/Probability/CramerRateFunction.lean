@@ -27,6 +27,7 @@ there.
 open MeasureTheory Filter Topology
 open scoped InnerProductSpace ENNReal
 open MathlibExt.Probability.CramerRateFunction
+open MathlibExt.Probability.CramerUpperBound
 
 namespace MathlibExtTest.Probability.CramerRateFunction
 
@@ -44,20 +45,24 @@ theorem logMGFVec_const_test {d : ℕ} (c : EuclideanSpace ℝ (Fin d))
     logMGFVec (fun _ => c) μ t = ⟪t, c⟫_ℝ :=
   logMGFVec_const c t
 
-/-- Signature restatement: Fenchel-Young. -/
+/-- Extended Fenchel–Young excludes nonintegrable directions with log moment top. -/
 theorem le_cramerRateFunction_test {d : ℕ} (X : Ω → EuclideanSpace ℝ (Fin d))
     (μ : Measure Ω) (x t : EuclideanSpace ℝ (Fin d)) :
-    ENNReal.ofReal (⟪t, x⟫_ℝ - logMGFVec X μ t) ≤ cramerRateFunction X μ x :=
+    (((⟪t, x⟫_ℝ : ℝ) : EReal) - extendedLogMGFVec X μ t).toENNReal ≤
+      cramerRateFunction X μ x :=
   le_cramerRateFunction X μ x t
 
-/-- Signature restatement: agreement with v1's definition when bounded above. -/
+/-- Finite-domain agreement retains the bounded-supremum formula for actual finite moments. -/
 theorem cramerRateFunction_eq_ofReal_iSup_test {d : ℕ}
     (X : Ω → EuclideanSpace ℝ (Fin d)) (μ : Measure Ω)
+    [IsProbabilityMeasure μ]
+    (hInt : ∀ t : EuclideanSpace ℝ (Fin d),
+      Integrable (fun ω => Real.exp ⟪t, X ω⟫_ℝ) μ)
     {x : EuclideanSpace ℝ (Fin d)}
     (hbdd : BddAbove (Set.range fun t => ⟪t, x⟫_ℝ - logMGFVec X μ t)) :
     cramerRateFunction X μ x =
       ENNReal.ofReal (⨆ t, ⟪t, x⟫_ℝ - logMGFVec X μ t) :=
-  cramerRateFunction_eq_ofReal_iSup X μ hbdd
+  cramerRateFunction_eq_ofReal_iSup X μ hInt hbdd
 
 /-- Signature restatement: the rate function vanishes at the mean. -/
 theorem cramerRateFunction_eq_zero_at_mean_test {d : ℕ}
