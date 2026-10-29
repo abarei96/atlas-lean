@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import MathlibExt.RingTheory.DedekindDomain.UnramifiedDiscriminant
+public import MathlibExt.RingTheory.DedekindDomain.FiniteRamification
 
 @[expose] public section
 
@@ -53,3 +54,38 @@ example (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
   Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal A B 𝔭 hndvd 𝔮 hlies
 
 end UnramifiedDiscriminantDirectTest
+
+namespace UnramifiedDiscriminantStandardTest
+
+variable (A B : Type*) [CommRing A] [CommRing B] [Algebra A B]
+  [IsDedekindDomain A] [IsDedekindDomain B] [Module.IsTorsionFree A B]
+  [Module.Finite A B]
+  [Algebra.IsSeparable (FractionRing A) (FractionRing B)]
+
+/-- Apply the standard primary criterion with only the direct A/B data. -/
+theorem primary_iff (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
+    Algebra.IsUnramifiedIn B 𝔭.asIdeal ↔
+      ¬ (𝔭.asIdeal ∣ Ideal.discriminantIdeal A B) :=
+  Ideal.isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭
+
+/-- A standard unramified-in premise directly gives nondivisibility. -/
+theorem primary_forward (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
+    (h : Algebra.IsUnramifiedIn B 𝔭.asIdeal) :
+    ¬ (𝔭.asIdeal ∣ Ideal.discriminantIdeal A B) :=
+  (Ideal.isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭).mp h
+
+/-- Nondivisibility directly constructs the standard unramified-in conclusion. -/
+theorem primary_reverse (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
+    (h : ¬ (𝔭.asIdeal ∣ Ideal.discriminantIdeal A B)) :
+    Algebra.IsUnramifiedIn B 𝔭.asIdeal :=
+  (Ideal.isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭).mpr h
+
+/-- The standard criterion composes with the canonical finite-ramification API. -/
+theorem finite_discriminant_prime_divisors :
+    {𝔭 : IsDedekindDomain.HeightOneSpectrum A |
+      𝔭.asIdeal ∣ Ideal.discriminantIdeal A B}.Finite := by
+  classical
+  simpa only [Ideal.isUnramifiedIn_iff_not_dvd_discriminantIdeal, not_not] using
+    (Ideal.finite_ramified_primes_below (A := A) (B := B))
+
+end UnramifiedDiscriminantStandardTest
