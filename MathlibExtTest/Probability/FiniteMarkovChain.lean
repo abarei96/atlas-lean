@@ -138,4 +138,48 @@ example : (Measure.dirac ()).map (altProcess (0 + 1))
 #print axioms IsFiniteMarkovChain.condExp_indicator
 #print axioms IsFiniteMarkovChain.map_succ_eq_bind
 
+/-- Literal transition entries independently specify the flip matrix orientation. -/
+theorem characterization_flip_entries :
+    flipMatrix.prob 0 0 = 0 ∧ flipMatrix.prob 0 1 = 1 ∧
+      flipMatrix.prob 1 0 = 1 ∧ flipMatrix.prob 1 1 = 0 := by
+  simp [flipMatrix]
+
+/-- Each transition row has probability mass one. -/
+theorem characterization_flip_row_mass (i : Fin 2) :
+    finiteChainKernel flipMatrix i Set.univ = 1 := measure_univ
+
+/-- The process takes the independently computed values 0, 1, 0. -/
+theorem characterization_alternating_values :
+    altProcess 0 () = 0 ∧ altProcess 1 () = 1 ∧ altProcess 2 () = 0 := by
+  norm_num [altProcess]
+
+/-- The law after two literal steps is again the point mass at zero. -/
+theorem characterization_alternating_law_two :
+    (Measure.dirac ()).map (altProcess 2) = Measure.dirac (0 : Fin 2) := by
+  simp [altProcess]
+
+/-- The smallest permitted state space has its unique transition of mass one. -/
+def oneStateMatrix : StochasticMatrix 0 where
+  prob _ _ := 1
+  nonneg _ _ := zero_le_one
+  row_sum _ := by simp
+
+/-- The unique one-state process. -/
+def oneStateProcess : ℕ → Unit → Fin 1 := fun _ _ => 0
+
+/-- This is an actual finite-chain witness on the smallest state space. -/
+theorem oneState_isFiniteMarkovChain :
+    IsFiniteMarkovChain oneStateProcess oneStateMatrix topFiltration (Measure.dirac ()) := by
+  refine ⟨fun _ => measurable_const, fun n j => ?_⟩
+  fin_cases j
+  simpa [oneStateProcess, oneStateMatrix] using
+    Filter.EventuallyEq.of_eq (condExp_const (μ := Measure.dirac ())
+      (m := topFiltration n) le_rfl (1 : ℝ))
+
+/-- Literal kernel mass at the single available state. -/
+theorem characterization_oneState_kernel :
+    finiteChainKernel oneStateMatrix 0 ↑({0} : Finset (Fin 1)) = 1 := by
+  rw [finiteChainKernel_apply]
+  simp [oneStateMatrix]
+
 end MathlibExt.Probability.FiniteMarkovChainTest
