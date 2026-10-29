@@ -15,7 +15,7 @@ public import Mathlib.Probability.Independence.Basic
 public import Mathlib.MeasureTheory.Integral.Bochner.Basic
 
 /-!
-# Tests: Cramér's upper bound (Chernoff form)
+# Tests: fixed-direction Chernoff bounds
 
 Signature restatements of the three theorems in
 `MathlibExt.Probability.CramerUpperBound`, plus a concrete application to the
@@ -48,7 +48,7 @@ theorem measure_empiricalMean_le_of_threshold_test {X : ℕ → Ω → ℝ}
     (μ E).toReal ≤ Real.exp (-(n : ℝ) * a) :=
   measure_empiricalMean_le_of_threshold hXmeas hXindep hXident hInt hn hEthr
 
-/-- Signature restatement: Cramér's upper bound for i.i.d. vectors. -/
+/-- Signature restatement: the fixed-direction Chernoff bound for i.i.d. vectors. -/
 theorem cramer_upper_bound_test {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
     [IsProbabilityMeasure μ]
     (hXmeas : ∀ i, Measurable (X i)) (hXindep : iIndepFun X μ)
@@ -60,7 +60,7 @@ theorem cramer_upper_bound_test {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ
     ((empiricalMeanMeasureVec X μ n) F).toReal ≤ Real.exp (-(n : ℝ) * a) :=
   cramer_upper_bound hXmeas hXindep hXident hF hInt ha n
 
-/-- Signature restatement: Cramér's upper bound in rate form. -/
+/-- Signature restatement: the fixed-direction Chernoff bound in rate form. -/
 theorem cramer_upper_bound_rate_test {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
     [IsProbabilityMeasure μ]
     (hXmeas : ∀ i, Measurable (X i)) (hXindep : iIndepFun X μ)

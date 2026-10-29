@@ -22,27 +22,31 @@ public import Mathlib.Topology.Algebra.Order.LiminfLimsup
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 /-!
-# Cramér's theorem: the upper bound (Chernoff form)
+# Fixed-direction Chernoff bounds for empirical means
 
-The upper bound in Cramér's theorem (Lecture 13): for i.i.d. random vectors
+For i.i.d. random vectors
 `X₁, X₂, …` in `ℝᵈ`, the laws `μₙ` of the empirical means `Aₙ = (1/n) ∑_{i<n} Xᵢ`
 satisfy, for every measurable set `F`, every `ξ ∈ ℝᵈ`, and every real `a` that
 lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on `F` (where `Λ(ξ) = log E[exp ⟪ξ, X₁⟫]`),
 
 `μₙ(F) ≤ exp(-n * a)`.
 
-This is the Chernoff bound for the empirical mean: it is the book's proof of the
-upper bound in Cramér's theorem (Markov's inequality applied to
-`exp ⟪ξ, Sₙ⟫`, using independence to factor the exponential moment of the sum),
-and it is the step that produces the rate function
-`Λ*(x) = sup_ξ {⟪ξ, x⟫ - Λ(ξ)}` after optimizing over `ξ`.
+This is a fixed-direction Chernoff bound for the empirical mean. Its proof applies
+Markov's inequality to `exp ⟪ξ, Sₙ⟫` and uses independence to factor the exponential
+moment of the sum. For fixed `ξ`, the asymptotic rate is
+`inf_{x ∈ F} (⟪ξ, x⟫ - Λ(ξ))`. Optimizing these bounds gives
+`sup_ξ inf_{x ∈ F} (⟪ξ, x⟫ - Λ(ξ))`. Obtaining the Cramér upper bound with
+`inf_{x ∈ F} Λ*(x)`, where `Λ*(x) = sup_ξ (⟪ξ, x⟫ - Λ(ξ))`, requires further
+arguments and hypotheses. For `Λ(ξ) = ξ²/2` and `F = {-1, 1}`, these two optimized
+rates are respectively `0` and `1/2`.
 
 Source: `v1/Atlas/TheoryOfProbability/code/CramerTheorem.lean`, `cramer_theorem`
 (Lecture 13). In v1 the full Cramér theorem (both bounds, with the limiting
 large deviation principle and convexity of the rate function) is left unproved.
-Here we prove the upper bound only; the lower bound (change of measure /
-tilting) is not claimed. The definitions `empiricalMeanMeasureVec` and
-`logMGFVec` are ported verbatim from v1.
+Here we prove the fixed-direction Chernoff estimate used in that argument. The
+Legendre-rate large-deviation upper bound and the lower bound by change of
+measure or tilting remain unproved here. The definitions `empiricalMeanMeasureVec`
+and `logMGFVec` are ported verbatim from v1.
 -/
 
 @[expose] public section
@@ -231,7 +235,7 @@ theorem measure_empiricalMean_le_of_threshold {X : ℕ → Ω → ℝ}
     ring
   rwa [hfinal] at hkey
 
-/-- **Cramér's upper bound (Chernoff form).** For i.i.d. random vectors in `ℝᵈ`,
+/-- **Fixed-direction Chernoff bound.** For i.i.d. random vectors in `ℝᵈ`,
 the law `μₙ` of the empirical mean satisfies `μₙ(F) ≤ exp(-n * a)` whenever
 `a` lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on `F`. -/
 theorem cramer_upper_bound {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
@@ -296,9 +300,10 @@ theorem cramer_upper_bound {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin
   rw [hξA, ← hlogY] at h1
   simpa using h1
 
-/-- **Cramér's upper bound, rate form.** With `s = inf_{x ∈ F} (⟪ξ, x⟫ - Λ(ξ))`
-the `n`-th root of `μₙ(F)` has limsup at most `exp(-s)`: the empirical-mean
-laws satisfy the large-deviation upper bound with rate `Λ*`. -/
+/-- **Fixed-direction Chernoff bound, rate form.** For a fixed `ξ` and
+`s = inf_{x ∈ F} (⟪ξ, x⟫ - Λ(ξ))`, the `n`-th root of `μₙ(F)` has limsup at most
+`exp(-s)`. Optimizing over `ξ` gives the supremum of these fixed-direction rates;
+the Legendre-rate Cramér upper bound requires further arguments. -/
 theorem cramer_upper_bound_rate {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
     [IsProbabilityMeasure μ]
     (hXmeas : ∀ i, Measurable (X i)) (hXindep : iIndepFun X μ)
