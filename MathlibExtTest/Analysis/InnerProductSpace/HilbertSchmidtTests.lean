@@ -54,7 +54,7 @@ private theorem hsRankOne_e0_apply_one :
 
 /-- The squared Hilbert–Schmidt norm of `e₀ ⊗ e₀` is `1`. -/
 private theorem hsNormSq_hsRankOne_e0 :
-    hsNormSq (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ)) = 1 := by
+    hsNormSq (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ)) isHilbertSchmidt_hsRankOne = 1 := by
   rw [hsNormSq_hsRankOne, lp.norm_single (by norm_num : (0 : ℝ≥0∞) < 2), norm_one]
   norm_num
 
@@ -112,7 +112,7 @@ private theorem hsDiagonal_d0_apply_one :
   simp [d0]
 
 /-- The squared Hilbert–Schmidt norm of the diagonal matrix `d0` is `1`. -/
-private theorem hsNormSq_hsDiagonal_d0 : hsNormSq (hsDiagonal d0) = 1 := by
+private theorem hsNormSq_hsDiagonal_d0 : hsNormSq (hsDiagonal d0) (isHilbertSchmidt_hsDiagonal summable_norm_sq_d0) = 1 := by
   rw [hsNormSq_hsDiagonal summable_norm_sq_d0]
   have h : (fun i => ‖d0 i‖ ^ 2) = fun i => if i = 0 then (1 : ℝ) else 0 := by
     funext i
@@ -133,7 +133,7 @@ private theorem hsMatrix_hsDiagonal_d0 :
 private theorem norm_hsRankOne_e0_le :
     ‖hsOperator (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ)) isHilbertSchmidt_hsRankOne‖ ≤ 1 := by
   calc ‖hsOperator (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ)) isHilbertSchmidt_hsRankOne‖
-      ≤ Real.sqrt (hsNormSq (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ))) :=
+      ≤ Real.sqrt (hsNormSq (hsRankOne (e0 : ℕ → ℂ) (e0 : ℕ → ℂ)) isHilbertSchmidt_hsRankOne) :=
         norm_hsOperator_le _ _
     _ = 1 := by rw [hsNormSq_hsRankOne_e0, Real.sqrt_one]
 
