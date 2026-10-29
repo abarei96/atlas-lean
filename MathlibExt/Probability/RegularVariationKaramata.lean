@@ -50,6 +50,19 @@ theorem for monotone functions with regularly varying tails, whose proof
 goes through Potter's bound, obtained from the ratio convergence at the
 dyadic scales `1/2` and `2` together with monotonicity.
 
+## Analytic proof references
+
+The mathematical inputs are Potter's bounds and Karamata's integral theorem:
+N. H. Bingham, C. M. Goldie and J. L. Teugels, *Regular Variation*, Cambridge
+University Press, 1987, Theorems 1.5.6 and 1.5.11 (direct half), respectively.
+Here the integral theorem has weight exponent `β` and `β + 1 + ρ > 0`.
+
+The dyadic Lean proofs of `potter_upper` and `karamata_integral` are present in
+this file at commit `e3e3f8ecc896e5925ae9c2b5da576063df868e2e`. The current
+formalization retains that analytic argument while using the canonical
+eventually-positive variation predicates. The v1 textbook-bank file cited
+above supplies an unproved second-moment statement, not these analytic proofs.
+
 ## Main results
 
 * `IsRegularlyVarying.ratio_tendsto`: if `T` is regularly varying of index

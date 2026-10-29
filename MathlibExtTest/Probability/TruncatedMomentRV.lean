@@ -196,7 +196,8 @@ theorem pareto_combinedTail {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
 
 theorem pareto_tailGe {α : ℝ} (hα : 0 < α) {t : ℝ} (ht : 1 ≤ t) :
     tailGe (paretoMeasure α) t = t ^ (-α) := by
-  rw [@tailGe_eq_combinedTail_add_atoms (paretoMeasure α) ⟨pareto_prob hα⟩ t
+  let _ : IsProbabilityMeasure (paretoMeasure α) := ⟨pareto_prob hα⟩
+  rw [tailGe_eq_combinedTail_add_atoms (paretoMeasure α)
       (show (0:ℝ) < t by linarith),
     pareto_combinedTail hα ht, pareto_atom t, pareto_atom (-t), ENNReal.toReal_zero, add_zero, add_zero]
 

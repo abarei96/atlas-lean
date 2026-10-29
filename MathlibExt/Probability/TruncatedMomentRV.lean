@@ -105,7 +105,7 @@ theorem tailGt_eq_combinedTail (μ : Measure ℝ) [IsFiniteMeasure μ]
     ENNReal.toReal_add (measure_ne_top μ _) (measure_ne_top μ _)]
 
 /-- At a positive threshold the two distinct endpoint atoms give the non-strict tail. -/
-private theorem tailGe_eq_tailGt_add_atoms (μ : Measure ℝ) [IsProbabilityMeasure μ]
+private theorem tailGe_eq_tailGt_add_atoms (μ : Measure ℝ) [IsFiniteMeasure μ]
     {s : ℝ} (hs : 0 < s) :
     tailGe μ s = tailGt μ s + (μ {s}).toReal + (μ {-s}).toReal := by
   have hset : {y : ℝ | s ≤ |y|} = {y : ℝ | s < |y|} ∪ ({s} ∪ {-s}) := by
@@ -155,7 +155,7 @@ private theorem tailGe_eq_tailGt_add_atoms (μ : Measure ℝ) [IsProbabilityMeas
   simpa only [add_assoc] using hge
 
 /-- The non-strict absolute tail adds both endpoint atoms to the canonical strict tail. -/
-theorem tailGe_eq_combinedTail_add_atoms (μ : Measure ℝ) [IsProbabilityMeasure μ]
+theorem tailGe_eq_combinedTail_add_atoms (μ : Measure ℝ) [IsFiniteMeasure μ]
     {s : ℝ} (hs : 0 < s) :
     tailGe μ s = combinedTail μ s + (μ {s}).toReal + (μ {-s}).toReal := by
   rw [tailGe_eq_tailGt_add_atoms μ hs, tailGt_eq_combinedTail μ hs.le]
@@ -407,7 +407,7 @@ theorem tailGe_ratio_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : 
 
 /-- The lower tail is asymptotically the combined tail. -/
 theorem tailGt_ratio_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
-    (_hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
     Tendsto (fun x => tailGt μ x / combinedTail μ x) atTop (𝓝 1) := by
   refine (tendsto_const_nhds : Tendsto (fun _ : ℝ => (1 : ℝ)) atTop (𝓝 1)).congr' ?_
   filter_upwards [hRV.eventually_pos, eventually_ge_atTop (0 : ℝ)] with x hx hx0
@@ -419,9 +419,9 @@ theorem eventually_pos_tailGe {μ : Measure ℝ} [IsProbabilityMeasure μ] {α :
   eventually_pos_of_ratio_tendsto (tailGe_ratio_tendsto hα hRV) hRV.eventually_pos
 
 theorem eventually_pos_tailGt {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
-    (hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
     ∀ᶠ x in atTop, 0 < tailGt μ x :=
-  eventually_pos_of_ratio_tendsto (tailGt_ratio_tendsto hα hRV) hRV.eventually_pos
+  eventually_pos_of_ratio_tendsto (tailGt_ratio_tendsto hRV) hRV.eventually_pos
 
 theorem tailGe_ratio_limit {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
     (hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
@@ -432,12 +432,12 @@ theorem tailGe_ratio_limit {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : �
     (eventually_pos_tailGe hα hRV) hRV.eventually_pos c hc
 
 theorem tailGt_ratio_limit {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
-    (hα : 0 < α) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
     ∀ c > 0, Tendsto (fun x => tailGt μ (c * x) / tailGt μ x) atTop (𝓝 (c ^ (-α))) := by
   intro c hc
-  exact ratio_limit_of_ratio_tendsto (tailGt_ratio_tendsto hα hRV)
+  exact ratio_limit_of_ratio_tendsto (tailGt_ratio_tendsto hRV)
     (fun c hc => hRV.ratio_tendsto hc)
-    (eventually_pos_tailGt hα hRV) hRV.eventually_pos c hc
+    (eventually_pos_tailGt hRV) hRV.eventually_pos c hc
 
 /-! ### Layer cake -/
 
@@ -587,7 +587,7 @@ theorem truncatedMoment_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α
   have hG : Tendsto (fun x => tailGe μ x / combinedTail μ x) atTop (𝓝 1) :=
     tailGe_ratio_tendsto hα hRV
   have hU : Tendsto (fun x => tailGt μ x / combinedTail μ x) atTop (𝓝 1) :=
-    tailGt_ratio_tendsto hα hRV
+    tailGt_ratio_tendsto hRV
   have hEq2 : (fun x => (∫ y in Set.Icc (-x) x, y ^ 2 ∂μ) / (x ^ 2 * combinedTail μ x))
       =ᶠ[atTop] (fun x => 2 * ((∫ t in (0:ℝ)..x, t * tailGe μ t) / (x ^ 2 * tailGe μ x))
           * (tailGe μ x / combinedTail μ x) - tailGt μ x / combinedTail μ x) := by
