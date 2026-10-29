@@ -71,10 +71,11 @@ form the three-series theorem actually needs.
   bounded sums, including the `E[S²Z²] = E[S²]E[Z²]` cross term) would
   give a uniform lower bound on block-tail probabilities, contradicting
   convergence in measure.
-* The mean half is proved by centering: the centered partial sums form a
-  martingale for the natural filtration, `L²`-bounded by the total
-  variance, hence a.s. convergent; the mean partial sums are then the
-  difference of two convergent series at a single sample point.
+* The mean half centers the sequence and bounds its partial sums in `L¹`
+  using the total variance. The canonical
+  `ProbabilityTheory.ae_tendsto_sum_of_indep_centered_L1bdd` gives a.s.
+  convergence; the mean partial sums are then the difference of two
+  convergent series at a single sample point.
 * Series (1) — summability of the tail probabilities
   `∑'ₙ μ {A < |Xₙ|}` — uses the public theorem
   `ProbabilityTheory.summable_tail_prob_of_ae_tendsto` in
@@ -85,11 +86,10 @@ form the three-series theorem actually needs.
 
 ## Relation to Mathlib
 
-The variance/martingale ingredients (`variance_eq_sub`, `IndepFun.variance_sum`,
-`martingale_of_setIntegral_eq_succ`,
-`Submartingale.exists_ae_tendsto_of_bdd`) are Mathlib; the
-symmetrization argument, the fourth-moment induction, and the assembly
-are new.
+The variance ingredients (`variance_eq_sub`, `IndepFun.variance_sum`) are
+Mathlib. Centered convergence and its square-integral-to-`L¹` bound reuse
+the canonical `KolmogorovThreeSeries` API; the symmetrization argument,
+the fourth-moment induction, and the assembly are new.
 -/
 
 @[expose] public section
@@ -104,32 +104,6 @@ namespace MathlibExt.Probability.ThreeSeriesNecessity
 open ProbabilityTheory.KolmogorovThreeSeries
 
 variable {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} [IsProbabilityMeasure μ]
-
-/-- Private reproduction of batch 10's `eLpNorm_one_le_two` (private there):
-on a probability space, `‖f‖₁ ≤ ‖f‖₂`. -/
-private lemma eLpNorm_one_le_two {f : Ω → ℝ} (hf : AEStronglyMeasurable f μ) :
-    eLpNorm f 1 μ ≤ eLpNorm f 2 μ := by
-  have h := eLpNorm_le_eLpNorm_mul_rpow_measure_univ (p := 1) (q := 2)
-    (by norm_num : (1 : ℝ≥0∞) ≤ 2) hf
-  simp only [measure_univ, ENNReal.one_rpow, mul_one] at h
-  exact h
-
-/-- Private reproduction of batch 10's `eLpNorm_one_le_sqrt_integral_sq`
-(private there): if `∫ ‖f‖² dμ ≤ C` then `‖f‖₁ ≤ √C`. -/
-private lemma eLpNorm_one_le_sqrt_integral_sq {f : Ω → ℝ} (hf : MemLp f 2 μ) {C : ℝ}
-    (h_int_sq : ∫ x, ‖f x‖ ^ (2 : ℝ) ∂μ ≤ C) :
-    eLpNorm f 1 μ ≤ ENNReal.ofReal (Real.sqrt C) := by
-  have h1 : eLpNorm f 1 μ ≤ eLpNorm f 2 μ := eLpNorm_one_le_two hf.aestronglyMeasurable
-  have h2 : eLpNorm f 2 μ ≤ ENNReal.ofReal (Real.sqrt C) := by
-    rw [hf.eLpNorm_eq_integral_rpow_norm (by norm_num : (2 : ℝ≥0∞) ≠ 0)
-      (by norm_num : (2 : ℝ≥0∞) ≠ ⊤)]
-    apply ENNReal.ofReal_le_ofReal
-    simp only [ENNReal.toReal_ofNat]
-    rw [Real.sqrt_eq_rpow]
-    show (∫ (a : Ω), ‖f a‖ ^ (2 : ℝ) ∂μ) ^ (2 : ℝ)⁻¹ ≤ C ^ ((1 : ℝ) / 2)
-    rw [show (2 : ℝ)⁻¹ = (1 : ℝ) / 2 from by norm_num]
-    exact Real.rpow_le_rpow (integral_nonneg (fun x => by positivity)) h_int_sq (by norm_num)
-  exact h1.trans h2
 
 /-- The pair of the `n`-th coordinates of two independent copies. -/
 def pairRV (Y : ℕ → Ω → ℝ) (n : ℕ) : Ω × Ω → ℝ × ℝ :=
@@ -960,10 +934,9 @@ theorem summable_variance_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
 /-- **Mean step of three-series necessity.** For a uniformly bounded
 independent sequence with summable variances whose partial sums converge
 almost surely, the partial sums of the means converge (to some limit).
-Proved by centering: the centered partial sums form a martingale for the
-natural filtration, `L²`-bounded by the total variance, hence a.s.
-convergent; the mean partial sums are the difference of the two
-convergent series at a single sample point. -/
+Proved by centering and applying the canonical centered-sum convergence
+theorem with an `L¹` bound from the total variance. The mean partial sums
+are the difference of the two convergent series at a single sample point. -/
 theorem tendsto_sum_integral_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
     (hYmeas : ∀ n, Measurable (Y n)) (hYindep : iIndepFun Y μ)
     {A : ℝ} (hYbdd : ∀ n ω, |Y n ω| ≤ A)
@@ -976,16 +949,18 @@ theorem tendsto_sum_integral_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
     Integrable.of_bound (hYmeas n).aestronglyMeasurable A
       (Filter.Eventually.of_forall fun ω => by
         rw [Real.norm_eq_abs]; exact hYbdd n ω)
-  -- Means, centered variables, centered partial sums, natural filtration.
+  -- Means, centered variables, and centered partial sums.
   set m : ℕ → ℝ := fun n => ∫ ω, Y n ω ∂μ with hmdef
   set C : ℕ → Ω → ℝ := fun n ω => Y n ω - m n with hCdef
   set f : ℕ → Ω → ℝ := fun n ω => ∑ k ∈ Finset.range (n + 1), C k ω with hfdef
-  set ℱ : Filtration ℕ _ := Filtration.natural Y (fun n => (hYmeas n).stronglyMeasurable)
-    with hℱdef
   -- Bridge between the pointwise lambda and the Pi-sum form.
   have hPi : ∀ n, f n = ∑ k ∈ Finset.range (n + 1), C k := fun n =>
     funext fun ω => (Finset.sum_apply _ _ _).symm
   have hCmeas : ∀ n, Measurable (C n) := fun n => (hYmeas n).sub measurable_const
+  have hCindep : iIndepFun C μ := by
+    have h := hYindep.comp (fun n (y : ℝ) => y - m n)
+      (fun _ => measurable_id'.sub measurable_const)
+    exact h
   have hCint : ∀ n, Integrable (C n) μ := fun n =>
     (hYint n).sub (integrable_const (m n))
   have hCmean : ∀ n, ∫ ω, C n ω ∂μ = 0 := by
@@ -1033,59 +1008,7 @@ theorem tendsto_sum_integral_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
       (((Finset.range (n + 1)).card : ℝ) * (2 * A))
       (Filter.Eventually.of_forall fun ω => by
         rw [Real.norm_eq_abs]; exact hfbound n ω)
-  -- The centered partial sums form a martingale for the natural filtration.
-  have hMart : Martingale f ℱ μ := by
-    apply martingale_of_setIntegral_eq_succ
-    · intro n
-      rw [hPi n]
-      apply Finset.stronglyMeasurable_sum
-      intro k hk
-      rw [Finset.mem_range] at hk
-      have hYk : StronglyMeasurable[ℱ n] (Y k) := by
-        apply StronglyMeasurable.mono _ (Filtration.mono ℱ (by omega : k ≤ n))
-        exact Filtration.stronglyAdapted_natural
-          (fun n => (hYmeas n).stronglyMeasurable) k
-      exact hYk.sub stronglyMeasurable_const
-    · intro n
-      exact integrable_finsetSum _ (fun k _ => hCint k)
-    · intro i s hs
-      have hs' : MeasurableSet s := (ℱ.le i) s hs
-      have hsucc : f (i + 1) = f i + C (i + 1) := by
-        funext ω
-        show (∑ k ∈ Finset.range (i + 2), C k ω) = (f i + C (i + 1)) ω
-        rw [Finset.sum_range_succ]
-        rfl
-      have hIntOn : ∫ ω in s, f (i + 1) ω ∂μ =
-          ∫ ω in s, f i ω ∂μ + ∫ ω in s, C (i + 1) ω ∂μ := by
-        rw [hsucc]
-        show ∫ ω in s, (f i ω + C (i + 1) ω) ∂μ = _
-        rw [integral_add (integrable_finsetSum _ (fun k _ => hCint k)).integrableOn
-          (hCint (i + 1)).integrableOn]
-      have hC0 : ∫ ω in s, C (i + 1) ω ∂μ = 0 := by
-        have hCY : ∫ ω in s, C (i + 1) ω ∂μ =
-            ∫ ω in s, Y (i + 1) ω ∂μ - m (i + 1) * (μ s).toReal := by
-          have h1 : ∫ ω in s, C (i + 1) ω ∂μ =
-              ∫ ω in s, Y (i + 1) ω ∂μ - ∫ ω in s, (fun _ => m (i + 1)) ω ∂μ := by
-            show ∫ ω in s, (Y (i + 1) ω - m (i + 1)) ∂μ = _
-            rw [integral_sub (hYint (i + 1)).integrableOn (integrableOn_const (C := m (i + 1)))]
-          rw [h1, setIntegral_const, smul_eq_mul]
-          simp only [Measure.real]
-          ring
-        have hCE : ∫ ω in s, Y (i + 1) ω ∂μ = m (i + 1) * (μ s).toReal := by
-          have hce := iIndepFun.condExp_natural_ae_eq_of_lt (f := Y)
-            (fun n => (hYmeas n).stronglyMeasurable) hYindep (show i < i + 1 by omega)
-          have hset : ∫ ω in s, μ[Y (i + 1) | ℱ i] ω ∂μ =
-              ∫ ω in s, (fun _ => m (i + 1)) ω ∂μ := by
-            apply setIntegral_congr_ae hs'
-            filter_upwards [hce] with ω hω hωs
-            exact hω
-          rw [← setIntegral_condExp (ℱ.le i) (hYint (i + 1)) hs, hset, setIntegral_const,
-            smul_eq_mul]
-          simp only [Measure.real]
-          ring
-        rw [hCY, hCE, sub_self]
-      rw [hIntOn, hC0, add_zero]
-  -- The martingale is `L¹`-bounded by the square root of the total variance.
+  -- The centered sums are `L¹`-bounded by the square root of the total variance.
   have hEfn : ∀ n, ∫ ω, f n ω ∂μ = 0 := by
     intro n
     show ∫ ω, (∑ k ∈ Finset.range (n + 1), C k ω) ∂μ = 0
@@ -1125,17 +1048,20 @@ theorem tendsto_sum_integral_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
   have hBdd : ∀ n, eLpNorm (f n) 1 μ ≤
       ENNReal.ofReal (Real.sqrt (∑' k, variance (Y k) μ)) := by
     intro n
-    exact eLpNorm_one_le_sqrt_integral_sq (hfMemLp n) (hV n)
-  have hMartAe : ∀ᵐ ω ∂μ, ∃ c, Tendsto (fun n => f n ω) atTop (𝓝 c) :=
-    hMart.submartingale.exists_ae_tendsto_of_bdd (fun n => by
-      have h := hBdd n
-      rwa [ENNReal.ofReal_eq_coe_nnreal (Real.sqrt_nonneg _)] at h)
+    exact ProbabilityTheory.eLpNorm_one_le_sqrt_integral_sq (hfMemLp n) (hV n)
+  have hCenteredAe : ∀ᵐ ω ∂μ, ∃ c, Tendsto (fun n => f n ω) atTop (𝓝 c) :=
+    ProbabilityTheory.ae_tendsto_sum_of_indep_centered_L1bdd
+      (fun n => (hCmeas n).stronglyMeasurable) hCindep hCmean hCint
+      (R := ⟨Real.sqrt (∑' k, variance (Y k) μ), Real.sqrt_nonneg _⟩)
+      (fun n => by
+        have h := hBdd n
+        rwa [ENNReal.ofReal_eq_coe_nnreal (Real.sqrt_nonneg _)] at h)
   -- Extract a single sample point where both the centered sums and the
   -- original sums converge.
   obtain ⟨S, hS⟩ := hYtend
   have hboth : ∀ᵐ ω ∂μ, (∃ c, Tendsto (fun n => f n ω) atTop (𝓝 c)) ∧
       Tendsto (fun n => ∑ i ∈ Finset.range n, Y i ω) atTop (nhds (S ω)) :=
-    (hMartAe.and hS)
+    (hCenteredAe.and hS)
   obtain ⟨ω₀, hω₀⟩ := hboth.exists
   obtain ⟨c, hc⟩ := hω₀.1
   -- The mean partial sums over `range (n + 1)` converge; shift back by one.

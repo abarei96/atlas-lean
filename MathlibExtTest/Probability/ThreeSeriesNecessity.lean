@@ -79,4 +79,10 @@ theorem three_series_necessity_alternating :
 
 #print axioms three_series_necessity_alternating
 
+/-- The canonical square-integral bound is available through a normal import. -/
+example [IsProbabilityMeasure μ] {f : Ω → ℝ} (hf : MemLp f 2 μ) {B : ℝ}
+    (hsq : ∫ ω, ‖f ω‖ ^ (2 : ℝ) ∂μ ≤ B) :
+    eLpNorm f 1 μ ≤ ENNReal.ofReal (Real.sqrt B) :=
+  ProbabilityTheory.eLpNorm_one_le_sqrt_integral_sq hf hsq
+
 end MathlibExtTest.Probability.ThreeSeriesNecessity

@@ -108,7 +108,7 @@ private lemma eLpNorm_one_le_two {f : Ω → ℝ} (hf : AEStronglyMeasurable f �
 
 /-- If `∫ ‖f‖² dμ ≤ C` for an `L²` function on a probability space, then
 `‖f‖₁ ≤ √C`. -/
-private lemma eLpNorm_one_le_sqrt_integral_sq {f : Ω → ℝ} (hf : MemLp f 2 μ) {C : ℝ}
+lemma eLpNorm_one_le_sqrt_integral_sq {f : Ω → ℝ} (hf : MemLp f 2 μ) {C : ℝ}
     (h_int_sq : ∫ x, ‖f x‖ ^ (2 : ℝ) ∂μ ≤ C) [IsProbabilityMeasure μ] :
     eLpNorm f 1 μ ≤ ENNReal.ofReal (Real.sqrt C) := by
   have h1 : eLpNorm f 1 μ ≤ eLpNorm f 2 μ := eLpNorm_one_le_two hf.aestronglyMeasurable
