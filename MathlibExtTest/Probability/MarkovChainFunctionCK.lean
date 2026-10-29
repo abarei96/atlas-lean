@@ -15,7 +15,8 @@ import MathlibExt.Probability.MarkovChainChapmanKolmogorov
 
 open MeasureTheory ProbabilityTheory Filter
 open scoped ENNReal NNReal Topology
-open MathlibExt.Probability.MarkovChainFunctionCK
+open MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain
+open MathlibExt.Probability.MarkovChainChapmanKolmogorov
 
 namespace MathlibExtTest.Probability.MarkovChainFunctionCK
 
@@ -26,7 +27,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     (hMC : IsMarkovChain X ℱ κ μ) (k : ℕ) {f : S → ℝ}
     (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
     μ[ f ∘ X (k + 1) | ℱ k ] =ᵐ[μ] fun ω => ∫ y, f y ∂ (κ (X k ω)) :=
-  hMC.condExp_one_step_eq_integral k hf hfb
+  condExp_one_step_eq_integral hMC k hf hfb
 
 /-- The `n`-step function form, restated with its exact public signature. -/
 example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
@@ -36,7 +37,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
     μ[ f ∘ X (m + n) | ℱ m ] =ᵐ[μ]
       fun ω => ∫ y, f y ∂ (κ ^ n) (X m ω) :=
-  hMC.condExp_comp_eq_integral_pow m n hf hfb
+  condExp_comp_eq_integral_pow hMC m n hf hfb
 
 /-- The integrated form, restated with its exact public signature. -/
 example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
@@ -46,7 +47,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
     ∫ ω, f (X (m + n) ω) ∂μ =
       ∫ ω, (∫ y, f y ∂ (κ ^ n) (X m ω)) ∂μ :=
-  hMC.integral_comp_eq m n hf hfb
+  integral_comp_eq hMC m n hf hfb
 
 /-- A constant chain is a Markov chain with the constant Dirac kernel:
 at each time the next state is `c`, so the one-step conditional
@@ -80,7 +81,8 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     μ[ f ∘ ((fun _ (_ : Ω) => c) (m + n)) | ℱ m ] =ᵐ[μ]
       fun ω => ∫ y, f y ∂ (((Kernel.const S (Measure.dirac c)) ^ n)
         ((fun _ (_ : Ω) => c) m ω)) :=
-  (constant_chain_isMarkovChain ℱ c).condExp_comp_eq_integral_pow m n hf hfb
+  condExp_comp_eq_integral_pow
+    (constant_chain_isMarkovChain ℱ c) m n hf hfb
 
 /-- The one-step kernel integral of the identity on `ℝ` against the
 constant Dirac kernel at `c` is `c`: the constant chain really does stay
@@ -92,9 +94,9 @@ example {Ω : Type*} (c : ℝ) :
   rw [pow_one, Kernel.const_apply]
   exact integral_dirac' _ _ stronglyMeasurable_id
 
-#print axioms MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_one_step_eq_integral
-#print axioms MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.condExp_comp_eq_integral_pow
-#print axioms MathlibExt.Probability.MarkovChainFunctionCK.IsMarkovChain.integral_comp_eq
+#print axioms condExp_one_step_eq_integral
+#print axioms condExp_comp_eq_integral_pow
+#print axioms integral_comp_eq
 
 
 /-- Zero steps retain the present state and the original boundedness hypothesis. -/
@@ -104,7 +106,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     (hMC : IsMarkovChain X ℱ κ μ) (k : ℕ) {f : S → ℝ}
     (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
     μ[ f ∘ X k | ℱ k ] =ᵐ[μ] f ∘ X k := by
-  have h := hMC.condExp_comp_eq_integral_pow k 0 hf hfb
+  have h := condExp_comp_eq_integral_pow hMC k 0 hf hfb
   have hdirac : (fun ω => ∫ y, f y ∂(κ ^ 0) (X k ω)) = f ∘ X k := by
     funext ω
     change ∫ y, f y ∂Kernel.id (X k ω) = f (X k ω)
@@ -119,7 +121,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     (hMC : IsMarkovChain X ℱ κ μ) (k : ℕ) {f : S → ℝ}
     (hf : StronglyMeasurable f) (hfb : ∃ C, ∀ y, ‖f y‖ ≤ C) :
     μ[ f ∘ X (k + 1) | ℱ k ] =ᵐ[μ] fun ω => ∫ y, f y ∂κ (X k ω) := by
-  simpa only [pow_one] using hMC.condExp_comp_eq_integral_pow k 1 hf hfb
+  simpa only [pow_one] using condExp_comp_eq_integral_pow hMC k 1 hf hfb
 
 /-- A signed indicator is a bounded state function with a literal uniform bound. -/
 example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
@@ -136,7 +138,7 @@ example {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
     by_cases hy : y ∈ B
     · simp [Set.indicator_of_mem hy]
     · simp [Set.indicator_of_notMem hy]
-  exact hMC.condExp_comp_eq_integral_pow k n hf hfb
+  exact condExp_comp_eq_integral_pow hMC k n hf hfb
 
 /-- Existing canonical witnesses are accepted by the one-step function API. -/
 theorem canonical_one_step {Ω S : Type*} {m : MeasurableSpace Ω} [MeasurableSpace S]
