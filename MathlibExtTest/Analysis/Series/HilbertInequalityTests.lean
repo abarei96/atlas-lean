@@ -36,7 +36,7 @@ example : ∑ m ∈ Finset.range 2, ∑ n ∈ Finset.range 2,
     (1:ℝ) * 1 / ((m:ℝ) + n + 2) = 17 / 12 := by
   norm_num [Finset.sum_range_succ]
 
-/-- The finite Hilbert bound, computed: `19 / 12 ≤ 2π`. -/
+/-- The finite Hilbert bound, computed: `17 / 12 ≤ 2π`. -/
 example : (17:ℝ) / 12 ≤ Real.pi * 2 := by
   have h := hilbert_inequality_finite (N := 2) (a := fun _ => (1:ℝ)) (b := fun _ => (1:ℝ))
     (fun _ => zero_le_one) (fun _ => zero_le_one)
@@ -108,5 +108,24 @@ example : ∑' (p : ℕ × ℕ), |(1 / 2 : ℝ) ^ p.1 * (1 / 2 : ℝ) ^ p.2| *
           hilbertKernel p.1 p.2
       ≤ Real.pi * Real.sqrt (4 / 3 : ℝ) * Real.sqrt (4 / 3 : ℝ) := hmain
     _ = Real.pi * (4 / 3) := by rw [mul_assoc, hsqrt]
+
+end MathlibExtTest.Analysis.Series.HilbertInequalityTests
+
+namespace MathlibExtTest.Analysis.Series.HilbertInequalityTests
+
+open MathlibExt.Analysis.Series.HilbertInequality
+
+/-- The infinite nonzero geometric Hilbert family is summable, as well as bounded. -/
+theorem geometric_hilbert_terms_summable :
+    Summable (fun p : ℕ × ℕ => |(1 / 2 : ℝ) ^ p.1 * (1 / 2 : ℝ) ^ p.2| *
+      hilbertKernel p.1 p.2) := by
+  have hsquare : Summable (fun n : ℕ => (((1 / 2 : ℝ) ^ n) ^ 2)) := by
+    have h : (fun n : ℕ => (((1 / 2 : ℝ) ^ n) ^ 2)) = fun n : ℕ => (1 / 4 : ℝ) ^ n := by
+      funext n
+      rw [← pow_mul, mul_comm n 2, pow_mul]
+      norm_num
+    rw [h]
+    exact summable_geometric_of_lt_one (by norm_num) (by norm_num)
+  exact summable_hilbert_terms hsquare hsquare
 
 end MathlibExtTest.Analysis.Series.HilbertInequalityTests
