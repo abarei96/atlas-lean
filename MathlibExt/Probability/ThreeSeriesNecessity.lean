@@ -322,7 +322,7 @@ private theorem paley_zygmund_measure_abs_gt_half {S : Ω → ℝ}
     exact (memLp_two_iff_integrable_sq hWm).mpr
       (hS4.congr (Filter.Eventually.of_forall fun ω => by ring))
   have hMemLp2 : MemLp (Set.indicator E (1 : Ω → ℝ)) (ENNReal.ofReal 2) μ :=
-    (memLp_const 1).indicator hEm
+    (memLp_const 1).indicator hEm.nullMeasurableSet
   have hCS := integral_mul_le_Lp_mul_Lq_of_nonneg (p := 2) (q := 2)
     (by exact Real.HolderConjugate.two_two)
     (Filter.Eventually.of_forall fun ω => sq_nonneg _)
