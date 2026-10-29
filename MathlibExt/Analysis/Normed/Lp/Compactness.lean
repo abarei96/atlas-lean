@@ -13,6 +13,7 @@ public import Mathlib.Analysis.Normed.Group.Bounded
 public import Mathlib.Analysis.RCLike.Lemmas
 public import Mathlib.Topology.MetricSpace.Pseudo.Basic
 public import Mathlib.Topology.UniformSpace.Cauchy
+public import MathlibExt.Analysis.Normed.Lp.SchauderBasis
 
 @[expose] public section
 
@@ -36,7 +37,10 @@ criterion nor any of its consequences here; Mathlib provides the `ℓ^p` API
 
 The statement is false for `p = ∞`: the singleton containing the constant
 sequence `1` is compact in `ℓ^∞`, but its tails do not vanish. The proofs
-below therefore assume `p ≠ ⊤`.
+of the compactness criteria therefore assume `p ≠ ⊤`. The coordinate
+extension `lpTrunc` is defined for every `p`, including `∞`. For finite
+`p ≥ 1`, it agrees with the existing bundled Schauder-basis projection;
+its contraction and convergence below use that canonical API.
 
 ## Main declarations
 
@@ -53,6 +57,7 @@ namespace MathlibExt.Analysis.Normed.Lp.Compactness
 
 open scoped ENNReal Topology
 open Filter Metric Set Finset
+open MathlibExt.Analysis.Normed.Lp.SchauderBasis
 
 section Defs
 
@@ -90,7 +95,10 @@ noncomputable def lpLift (p : ℝ≥0∞) (N : ℕ) (y : ℕ → 𝕜) :
     lp (fun _ : ℕ => 𝕜) p :=
   ∑ i ∈ Finset.range N, lp.single (E := fun _ : ℕ => 𝕜) p i (y i)
 
-/-- Truncation of an `ℓ^p` sequence to its first `N` coordinates. -/
+/-- The all-`p` coordinate extension of finite truncation to the first `N`
+coordinates, also defined at `p = ∞`. For finite `p ≥ 1`,
+`lpTrunc_eq_lpSchauderBasis_proj` identifies it with the canonical
+continuous linear Schauder projection. -/
 noncomputable def lpTrunc (p : ℝ≥0∞) (N : ℕ) (x : lp (fun _ : ℕ => 𝕜) p) :
     lp (fun _ : ℕ => 𝕜) p :=
   lpLift p N (fun i => x i)
@@ -148,15 +156,26 @@ section Norm
 
 variable {𝕜 : Type*} [RCLike 𝕜] {p : ℝ≥0∞} [Fact (1 ≤ p)]
 
+/-- For finite `p ≥ 1`, coordinate truncation is the canonical bundled
+Schauder-basis projection. -/
+theorem lpTrunc_eq_lpSchauderBasis_proj (hp : p ≠ ⊤) (N : ℕ)
+    (x : lp (fun _ : ℕ => 𝕜) p) :
+    lpTrunc p N x = (lpSchauderBasis (𝕜 := 𝕜) hp).proj N x := by
+  rw [lpSchauderBasis_proj_apply]
+  rfl
+
 /-- Truncation is a contraction. -/
 theorem norm_lpTrunc_le (N : ℕ) (x : lp (fun _ : ℕ => 𝕜) p) :
     ‖lpTrunc p N x‖ ≤ ‖x‖ := by
-  have hp0 : p ≠ 0 := (zero_lt_one.trans_le Fact.out).ne'
-  refine lp.norm_mono hp0 fun i => ?_
-  by_cases hi : i < N
-  · rw [lpTrunc_apply, ite_eq_left hi]
-  · rw [lpTrunc_apply, ite_eq_right hi, norm_zero]
-    exact norm_nonneg _
+  by_cases hp : p = ⊤
+  · subst p
+    refine lp.norm_mono (by simp : (⊤ : ℝ≥0∞) ≠ 0) fun i => ?_
+    by_cases hi : i < N
+    · rw [lpTrunc_apply, ite_eq_left hi]
+    · rw [lpTrunc_apply, ite_eq_right hi, norm_zero]
+      exact norm_nonneg _
+  · rw [lpTrunc_eq_lpSchauderBasis_proj hp]
+    exact norm_lpSchauderBasis_classical_proj_apply_le hp N x
 
 /-- The tail of a vector is no larger than the vector itself. -/
 theorem norm_sub_lpTrunc_le (N : ℕ) (x : lp (fun _ : ℕ => 𝕜) p) :
@@ -212,10 +231,8 @@ theorem norm_lpLift_le (hp : p ≠ ⊤) (N : ℕ) (y : ℕ → 𝕜) :
 /-- The truncations of an `ℓ^p` vector converge to the vector. -/
 theorem tendsto_lpTrunc (hp : p ≠ ⊤) (x : lp (fun _ : ℕ => 𝕜) p) :
     Tendsto (fun N => lpTrunc p N x) atTop (𝓝 x) := by
-  have h := (lp.hasSum_single hp x).tendsto_sum_nat
-  show Tendsto (fun N => ∑ i ∈ Finset.range N,
-    lp.single (E := fun _ : ℕ => 𝕜) p i (x i)) atTop (𝓝 x)
-  exact h
+  simpa only [lpTrunc_eq_lpSchauderBasis_proj hp] using
+    (lpSchauderBasis (𝕜 := 𝕜) hp).tendsto_proj x
 
 /-- The tail of a single vector can be made arbitrarily small. -/
 theorem exists_norm_sub_lpTrunc_lt (hp : p ≠ ⊤) (x : lp (fun _ : ℕ => 𝕜) p)

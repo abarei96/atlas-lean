@@ -187,4 +187,48 @@ example : ¬ UniformTailVanishing (⊤ : ℝ≥0∞)
   intro i
   rfl
 
+/-- Finite-`p` truncation is the existing bundled Schauder projection. -/
+example [Fact (1 ≤ (2 : ℝ≥0∞))] (x : lp (fun _ : ℕ => ℝ) 2) (N : ℕ) :
+    lpTrunc (2 : ℝ≥0∞) N x =
+      (MathlibExt.Analysis.Normed.Lp.SchauderBasis.lpSchauderBasis
+        (by norm_num : (2 : ℝ≥0∞) ≠ ⊤)).proj N x :=
+  lpTrunc_eq_lpSchauderBasis_proj (by norm_num) N x
+
+/-- Restriction preserves an in-range coordinate of a concrete unit vector. -/
+example : lpRestrict 2 (lp.single (E := fun _ : ℕ => ℝ) 2 1 (5 : ℝ)) (1 : Fin 2) = 5 := by
+  rw [lpRestrict_apply]
+  simp
+
+/-- Extension preserves an in-range coordinate and vanishes at the support boundary. -/
+example (z : Fin 2 → ℝ) : lpExtend 2 z 1 = z 1 ∧ lpExtend 2 z 2 = 0 := by
+  constructor
+  · rw [lpExtend_apply, dite_eq_left (by decide : (1 : ℕ) < 2)]
+    rfl
+  · rw [lpExtend_apply, dite_eq_right (by decide : ¬ (2 : ℕ) < 2)]
+
+/-- Lifting an extended finite vector preserves its coordinates and zero support boundary. -/
+example (z : Fin 2 → ℝ) :
+    lpLift (2 : ℝ≥0∞) 2 (lpExtend 2 z) 1 = z 1 ∧
+      lpLift (2 : ℝ≥0∞) 2 (lpExtend 2 z) 2 = 0 := by
+  constructor
+  · rw [lpLift_apply, ite_eq_left (by decide : (1 : ℕ) < 2),
+      lpExtend_apply, dite_eq_left (by decide : (1 : ℕ) < 2)]
+    rfl
+  · rw [lpLift_apply, ite_eq_right (by decide : ¬ (2 : ℕ) < 2)]
+
+/-- The lift norm estimate applies directly to an extended finite coordinate vector. -/
+example [Fact (1 ≤ (2 : ℝ≥0∞))] (z : Fin 2 → ℝ) :
+    ‖lpLift (2 : ℝ≥0∞) 2 (lpExtend 2 z)‖ ≤
+      (2 : ℝ) ^ (1 / (2 : ℝ≥0∞).toReal) * ‖z‖ := by
+  have hext : (fun i : Fin 2 => lpExtend 2 z i) = z := by
+    funext i
+    exact dite_eq_left i.2
+  simpa only [hext, Nat.cast_ofNat] using
+    norm_lpLift_le (by norm_num : (2 : ℝ≥0∞) ≠ ⊤) 2 (lpExtend 2 z)
+
+/-- Tail monotonicity includes the empty truncation `N = 0`, for every upper cut. -/
+example [Fact (1 ≤ (2 : ℝ≥0∞))] (x : lp (fun _ : ℕ => ℝ) 2) (M : ℕ) :
+    ‖x - lpTrunc (2 : ℝ≥0∞) M x‖ ≤ ‖x - lpTrunc (2 : ℝ≥0∞) 0 x‖ :=
+  norm_sub_lpTrunc_mono (Nat.zero_le M) x
+
 end MathlibExt.Analysis.Normed.Lp.CompactnessTest
