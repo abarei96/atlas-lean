@@ -25,9 +25,10 @@ The Pareto measure with tail index `α > 0` is the canonical example: its
 combined tail is exactly `x ^ (-α)` for `x ≥ 1`, and its tail balance is
 `p = 1`. The main theorem applied at `α = 1 / 2`, `c = 4` gives the limit `2`.
 
-The Pareto test infrastructure (density, measure, tail computations) follows
-the argument of batch 74's test file (unmerged); the quantities tested here
-(first moment, and the `α > 1` divergence) are different.
+The Pareto density, measure and tail computations adapt
+`MathlibExtTest/Probability/TruncatedMomentRV.lean` at commit
+`e3e3f8ecc896e5925ae9c2b5da576063df868e2e`. This file tests the first moment
+and the `α > 1` divergence, rather than that source's second moment.
 
 The falsification: for `α = 3 / 2` the ratio diverges to `+∞`, while v1's
 formula `p * α * c ^ (1 - α) / (1 - α)` (with `p = 1`, `c = 1`) gives the

@@ -51,8 +51,25 @@ boundary atoms and is corrected here.
 The proof uses eventual positivity in Potter's bound and Karamata's integral
 theorem for antitone tails, the pinned Mathlib layer-cake API for the restricted
 first moment, and tail balance. No global first moment or no-atoms assumption is
-needed. The private analytic estimates originate in the earlier first-moment
-port and its adapted dyadic Karamata argument.
+needed.
+
+## Analytic proof references
+
+The mathematical inputs are Potter's bounds and Karamata's integral theorem:
+N. H. Bingham, C. M. Goldie and J. L. Teugels, *Regular Variation*, Cambridge
+University Press, 1987, Theorems 1.5.6 and 1.5.11 (direct half), respectively.
+Here the integral theorem is used with weight exponent `β = 0` and
+`ρ = -α > -1`.
+
+The adapted dyadic Lean development is inspectable in
+`MathlibExt/Probability/RegularVariationKaramata.lean` at commit
+`e3e3f8ecc896e5925ae9c2b5da576063df868e2e`: `potter_lower`, `potter_upper` and
+`karamata_integral`. This module specializes the integral argument to `β = 0`.
+The pre-repair first-moment implementation is
+`MathlibExt/Probability/TailIntegralRV.lean` at commit
+`88d996e13e6af4f66f6ead91f7b47faf0835c402`. The current proof retains that
+analytic argument while using the canonical variation and tail interfaces;
+v1 itself supplies the statement, not a proof.
 
 The old globally-positive slow-factor predicate differs from canonical eventual
 positivity for a fixed factor. The existential regular-variation predicates can
