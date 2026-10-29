@@ -89,4 +89,45 @@ example (μ : Measure ℝ) [IsFiniteMeasure μ] {s : ℝ} (hs : 0 ≤ s) :
     tailGt μ s = combinedTail μ s :=
   tailGt_eq_combinedTail μ hs
 
+-- Review regression: finite mass is enough; probability normalization is unnecessary.
+example (μ : Measure ℝ) [IsFiniteMeasure μ] {s : ℝ} (hs : 0 < s) :
+    tailGe μ s = combinedTail μ s + (μ {s}).toReal + (μ {-s}).toReal :=
+  tailGe_eq_combinedTail_add_atoms μ hs
+
+-- Total mass two, with a nonzero atom at each boundary.
+example :
+    tailGe (Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) 1 =
+      combinedTail (Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) 1 +
+        ((Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) {1}).toReal +
+        ((Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) {-1}).toReal ∧
+    tailGe (Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) 1 = 2 ∧
+    combinedTail (Measure.dirac (-1 : ℝ) + Measure.dirac (1 : ℝ)) 1 = 0 := by
+  refine ⟨tailGe_eq_combinedTail_add_atoms _ (by norm_num), ?_, ?_⟩ <;>
+    norm_num [combinedTail, rightTail, leftTail, tailGe,
+      Measure.add_apply, Measure.dirac_apply]
+
+-- Zero mass is finite and is not a probability law.
+example : tailGe (0 : Measure ℝ) 1 = combinedTail (0 : Measure ℝ) 1 +
+      ((0 : Measure ℝ) {1}).toReal + ((0 : Measure ℝ) {-1}).toReal ∧
+    tailGe (0 : Measure ℝ) 1 = 0 := by
+  refine ⟨tailGe_eq_combinedTail_add_atoms _ (by norm_num), ?_⟩
+  simp [tailGe]
+
+-- Conditional zero-index API/type coverage, with an explicit regular-variation witness.
+example {μ : Measure ℝ} [IsProbabilityMeasure μ]
+    (hRV : IsRegularlyVarying (combinedTail μ) (- (0 : ℝ))) :
+    Tendsto (fun x => tailGt μ x / combinedTail μ x) atTop (𝓝 1) :=
+  tailGt_ratio_tendsto hRV
+
+-- Neither downstream strict-tail API needs a positive index.
+example {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
+    (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    ∀ᶠ x in atTop, 0 < tailGt μ x :=
+  eventually_pos_tailGt hRV
+
+example {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
+    (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    ∀ c > 0, Tendsto (fun x => tailGt μ (c * x) / tailGt μ x) atTop (𝓝 (c ^ (-α))) :=
+  tailGt_ratio_limit hRV
+
 end MathlibExtTest.Probability.TruncatedMomentRVCanonical
