@@ -24,6 +24,9 @@ tests; no new definitions are introduced.
 
 set_option autoImplicit false
 
+attribute [local instance] FractionRing.liftAlgebra
+  FractionRing.isScalarTower_liftAlgebra
+
 universe u
 
 namespace UnramifiedDiscriminantTest
@@ -40,26 +43,49 @@ variable (A K : Type*) (L : Type u) (B : Type*)
   [IsDedekindDomain A] [IsDedekindDomain B] [Module.IsTorsionFree A B]
   [Module.Finite A B]
 
+omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
+include K L in
+/-- Transport the original fraction-field presentation for the original clients. -/
+private theorem isSeparable_fractionRing :
+    Algebra.IsSeparable (FractionRing A) (FractionRing B) := by
+  have H : RingHom.comp (algebraMap (FractionRing A) (FractionRing B))
+      ↑(FractionRing.algEquiv A K).symm.toRingEquiv =
+        RingHom.comp ↑(FractionRing.algEquiv B L).symm.toRingEquiv (algebraMap K L) := by
+    apply IsLocalization.ringHom_ext (nonZeroDivisors A)
+    ext
+    simp only [RingHom.coe_comp, RingHom.coe_coe,
+      AlgEquiv.coe_toRingEquiv, Function.comp_apply, AlgEquiv.commutes,
+      ← IsScalarTower.algebraMap_apply]
+    rw [IsScalarTower.algebraMap_apply A B L, AlgEquiv.commutes,
+      ← IsScalarTower.algebraMap_apply]
+  exact Algebra.IsSeparable.of_equiv_equiv _ _ H
+
 /-- Generic application of the discriminant-half iff. -/
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
     (∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) ↔
-    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
-  Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A K L B 𝔭
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) := by
+  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
+    isSeparable_fractionRing A K L B
+  exact Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A B 𝔭
 
 /-- Generic application of the forward implication. -/
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
-    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
-  Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt A K L B 𝔭 hall
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) := by
+  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
+    isSeparable_fractionRing A K L B
+  exact Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt A B 𝔭 hall
 
 /-- Generic application of the reverse implication. -/
 example (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
     (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
-    Algebra.IsUnramifiedAt A 𝔮.asIdeal :=
-  Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal A K L B 𝔭 hndvd 𝔮 hlies
+    Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
+  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
+    isSeparable_fractionRing A K L B
+  exact Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal A B 𝔭 hndvd 𝔮 hlies
 
 omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
 include K L in
@@ -70,9 +96,11 @@ theorem dvd_discriminantIdeal_iff_exists_ramified
     (𝔭.asIdeal ∣ discriminantIdeal A B) ↔
       ∃ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal ∧
         ¬ Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
+  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
+    isSeparable_fractionRing A K L B
   rw [← not_iff_not]
   push Not
-  exact (Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A K L B 𝔭).symm
+  exact (Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal A B 𝔭).symm
 
 #print axioms Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal
 #print axioms Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt

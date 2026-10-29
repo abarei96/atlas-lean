@@ -9,12 +9,10 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import MathlibExt.RingTheory.DedekindDomain.DiscriminantTower
-public import Mathlib.RingTheory.DedekindDomain.Different
-public import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
-public import Mathlib.RingTheory.Ideal.Norm.RelNorm
-public import Mathlib.RingTheory.Ideal.Over
 
 import Mathlib.Algebra.BigOperators.Associated
+import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
+import Mathlib.RingTheory.Ideal.Over
 
 attribute [local instance] FractionRing.liftAlgebra FractionRing.isScalarTower_liftAlgebra
 
@@ -38,8 +36,14 @@ used only inside the proofs below. The different-ideal half of the book's statem
 `𝔮 ∤ differentIdeal A B ↔ Algebra.IsUnramifiedAt A 𝔮`, is Mathlib's
 `not_dvd_differentIdeal_iff`, used as a lemma, not re-proved.
 
-The proof does not go through the book's lattice-discriminant counting
-argument: the forward direction factors the different ideal into primes
+The proof adapts `unramified_iff_not_dvd_discriminant` in
+`v1/Atlas/NumberTheoryI/code/DifferentDiscriminant.lean`. That formalization
+transports fraction-field separability, factors the different, maps its prime
+factors through the relative norm, and applies the different-ideal criterion.
+Here the public statements assume fraction-ring separability directly and use
+the discriminant ideal as the norm of the different instead of the archived
+lattice/submodule representation. The ideal argument is retained: the forward
+direction factors the different ideal into primes
 (`Ideal.prod_normalizedFactors_eq_self`) and uses that the relative norm of a
 prime above `𝔭` is a power of `𝔭` (`Ideal.exists_relNorm_eq_pow_of_isPrime`);
 the reverse direction uses `Ideal.relNorm_le_comap` together with the same
@@ -54,41 +58,13 @@ power statement.
   implications separately.
 -/
 
-universe u
-
 namespace Ideal
 
-variable (A K : Type*) (L : Type u) (B : Type*)
-  [CommRing A] [Field K] [CommRing B] [Field L]
-  [Algebra A K] [Algebra B L] [Algebra A B] [Algebra K L] [Algebra A L]
-  [IsScalarTower A K L] [IsScalarTower A B L]
-  [IsFractionRing A K]
-  [FiniteDimensional K L] [IsIntegralClosure B A L] [Algebra.IsSeparable K L]
-  [IsFractionRing B L]
+variable (A B : Type*) [CommRing A] [CommRing B] [Algebra A B]
   [IsDedekindDomain A] [IsDedekindDomain B] [Module.IsTorsionFree A B]
   [Module.Finite A B]
+  [Algebra.IsSeparable (FractionRing A) (FractionRing B)]
 
-omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
-include K L in
-/-- Separability of the fraction fields, transported from `L / K` along the
-fraction-ring equivalences. This is the instance Mathlib's different-ideal
-API (`not_dvd_differentIdeal_iff`) requires. -/
-private theorem isSeparable_fractionRing :
-    Algebra.IsSeparable (FractionRing A) (FractionRing B) := by
-  have H : RingHom.comp (algebraMap (FractionRing A) (FractionRing B))
-      ↑(FractionRing.algEquiv A K).symm.toRingEquiv =
-        RingHom.comp ↑(FractionRing.algEquiv B L).symm.toRingEquiv (algebraMap K L) := by
-    apply IsLocalization.ringHom_ext (nonZeroDivisors A)
-    ext
-    simp only [RingHom.coe_comp, RingHom.coe_coe,
-      AlgEquiv.coe_ringEquiv, Function.comp_apply, AlgEquiv.commutes,
-      ← IsScalarTower.algebraMap_apply]
-    rw [IsScalarTower.algebraMap_apply A B L, AlgEquiv.commutes,
-      ← IsScalarTower.algebraMap_apply]
-  exact Algebra.IsSeparable.of_equiv_equiv _ _ H
-
-omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
-include K L in
 /-- If the extension is unramified at every prime above `𝔭`, then `𝔭` does not
 divide the discriminant ideal. -/
 theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
@@ -96,8 +72,6 @@ theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
     (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
     ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) := by
-  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
-    isSeparable_fractionRing A K L B
   have hDne : differentIdeal A B ≠ ⊥ := differentIdeal_ne_bot
   rw [discriminantIdeal_eq_spanNorm A B, spanNorm_eq]
   intro hdvd
@@ -127,8 +101,6 @@ theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
   have hunram := hall ⟨Q, hQprime, hQne⟩ hQlies
   exact (not_dvd_differentIdeal_iff.mpr hunram) hQdvdD
 
-omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
-include K L in
 /-- If `𝔭` does not divide the discriminant ideal, then the extension is
 unramified at every prime above `𝔭`. -/
 theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
@@ -136,8 +108,6 @@ theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
     (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
     (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
     Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
-  have hsep : Algebra.IsSeparable (FractionRing A) (FractionRing B) :=
-    isSeparable_fractionRing A K L B
   rw [discriminantIdeal_eq_spanNorm A B, spanNorm_eq] at hndvd
   rw [← not_dvd_differentIdeal_iff]
   intro hqdvd
@@ -161,8 +131,6 @@ theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
     exact relNorm_mono A (Ideal.dvd_iff_le.mp hqdvd)
   exact dvd_trans h1 h2
 
-omit [FiniteDimensional K L] [IsIntegralClosure B A L] in
-include K L in
 /-- Theorem 12.19, discriminant half: the extension is unramified at every
 prime above `𝔭` if and only if `𝔭` does not divide the discriminant ideal. -/
 theorem isUnramifiedAt_iff_not_dvd_discriminantIdeal
@@ -170,8 +138,8 @@ theorem isUnramifiedAt_iff_not_dvd_discriminantIdeal
     (∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) ↔
     ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
-  ⟨not_dvd_discriminantIdeal_of_isUnramifiedAt A K L B 𝔭,
+  ⟨not_dvd_discriminantIdeal_of_isUnramifiedAt A B 𝔭,
    fun hndvd 𝔮 hlies =>
-     isUnramifiedAt_of_not_dvd_discriminantIdeal A K L B 𝔭 hndvd 𝔮 hlies⟩
+     isUnramifiedAt_of_not_dvd_discriminantIdeal A B 𝔭 hndvd 𝔮 hlies⟩
 
 end Ideal
