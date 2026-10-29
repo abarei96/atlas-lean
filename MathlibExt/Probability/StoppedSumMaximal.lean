@@ -1204,6 +1204,19 @@ noncomputable def predictableFiltration
     MeasurableSpace.comap (X l') inferInstance) l (Nat.lt_of_lt_of_le hl hij)
   le' _k := iSup₂_le fun j _ => (hX_meas j).comap_le
 
+/-- The predictable filtration contains no observations at time zero. -/
+@[simp] theorem predictableFiltration_zero {X : ℕ → Ω → ℝ}
+    (hX_meas : ∀ i, Measurable (X i)) :
+    predictableFiltration m0 X hX_meas 0 = ⊥ := by
+  simp [predictableFiltration]
+
+/-- A successor step adds exactly the next observation to the predictable filtration. -/
+theorem predictableFiltration_succ {X : ℕ → Ω → ℝ}
+    (hX_meas : ∀ i, Measurable (X i)) (k : ℕ) :
+    predictableFiltration m0 X hX_meas (k + 1) =
+      predictableFiltration m0 X hX_meas k ⊔ MeasurableSpace.comap (X k) inferInstance :=
+  Nat.iSup_lt_succ (fun j => MeasurableSpace.comap (X j) inferInstance) k
+
 private theorem measurable_predictableFiltration_succ {X : ℕ → Ω → ℝ}
     (hX_meas : ∀ i, Measurable (X i)) (k : ℕ) :
     Measurable[predictableFiltration m0 X hX_meas (k + 1)] (X k) := by
@@ -1230,18 +1243,19 @@ private theorem indep_predictableFiltration {Ω : Type*} {m0 : MeasurableSpace �
 /-- **Square-integrability of a stopped partial sum**, general-filtration form. -/
 theorem integrable_stopped_partialSum_sq {X : ℕ → Ω → ℝ}
     (hX_iid : ∀ i j, IdentDistrib (X i) (X j) μ μ)
-    (hX_meas : ∀ i, Measurable (X i))
     (hX_int : Integrable (X 0) μ)
     (hX_sq_int : Integrable (fun ω => (X 0 ω) ^ 2) μ)
     (hmean : ∫ ω, X 0 ω ∂μ = 0)
     {ℱ : Filtration ℕ m0}
-    (hIndep : ∀ k, Indep (ℱ k) (MeasurableSpace.comap (X k) inferInstance) μ)
+    (hIndep : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (ℱ k) μ)
     (hadapt : ∀ k, Measurable[ℱ (k + 1)] (X k))
     {τ : Ω → ℕ} (hT : IsStoppingTime ℱ (fun ω => (τ ω : WithTop ℕ)))
     (hτ_int : Integrable (fun ω => (τ ω : ℝ)) μ) :
-    Integrable (fun ω => (∑ i ∈ Finset.range (τ ω), X i ω) ^ 2) μ :=
-  integrable_stopped_partialSum_sq_of_integrable_tau hX_iid hX_meas hX_int hX_sq_int hmean
-    hIndep hadapt hT hτ_int
+    Integrable (fun ω => (∑ i ∈ Finset.range (τ ω), X i ω) ^ 2) μ := by
+  have hX_meas : ∀ k, Measurable (X k) :=
+    fun k => (hadapt k).mono (ℱ.le (k + 1)) le_rfl
+  exact integrable_stopped_partialSum_sq_of_integrable_tau hX_iid hX_meas hX_int hX_sq_int
+    hmean (fun k => (hIndep k).symm) hadapt hT hτ_int
 
 /-- **Square-integrability of the maximal stopped partial sum**, in v1's form:
 `max_{0 ≤ k ≤ T} Sₖ²` is integrable. This is v1's
