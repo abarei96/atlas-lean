@@ -15,6 +15,7 @@ public import Mathlib.LinearAlgebra.Dimension.Finrank
 public import Mathlib.LinearAlgebra.Eigenspace.Basic
 public import Mathlib.LinearAlgebra.FiniteDimensional.Defs
 
+import MathlibExt.Analysis.FunctionalAnalysis.CompactOperatorNotUnit
 import Mathlib.Analysis.Normed.Module.FiniteDimension
 import Mathlib.Analysis.RCLike.Lemmas
 import Mathlib.Tactic.Choose
@@ -259,24 +260,6 @@ theorem ncard_spectrum_le_finrank_range_add_one
         exact Nat.add_le_add_right
           (Module.End.ncard_nonzero_hasEigenvalue_le_finrank_range (T := (T : E →ₗ[𝕜] E)) hF) 1
 
-/-- `0` lies in the spectrum of a finite-rank operator on an
-infinite-dimensional space: such an operator cannot be a unit, since a unit
-would have full range. -/
-theorem zero_mem_spectrum_of_finiteDimensional_range
-    (hF : FiniteDimensional 𝕜 (LinearMap.range (T : E →ₗ[𝕜] E)))
-    (hInf : ¬ FiniteDimensional 𝕜 E) :
-    (0 : 𝕜) ∈ spectrum 𝕜 T := by
-  rw [spectrum.zero_mem_iff]
-  intro hunit
-  have hsurj : Function.Surjective (T : E → E) := by
-    rw [ContinuousLinearMap.isUnit_iff_bijective] at hunit
-    exact hunit.2
-  have htop : LinearMap.range (T : E →ₗ[𝕜] E) = ⊤ :=
-    LinearMap.range_eq_top.mpr hsurj
-  rw [htop] at hF
-  exact hInf (Module.Finite.equiv
-    (Submodule.topEquiv : ↥(⊤ : Submodule 𝕜 E) ≃ₗ[𝕜] E))
-
 /-- **Spectrum of a finite-rank operator on an infinite-dimensional space.**
 The spectrum is exactly `{0} ∪ {eigenvalues}`. -/
 theorem spectrum_eq_insert_zero_hasEigenvalue
@@ -290,7 +273,8 @@ theorem spectrum_eq_insert_zero_hasEigenvalue
     rw [Set.mem_insert_iff] at hμ
     rcases hμ with h | h
     · rw [h]
-      exact zero_mem_spectrum_of_finiteDimensional_range hF hInf
+      exact CompactOperatorNotUnit.zero_mem_spectrum_of_isCompactOperator hInf T
+        (isCompactOperator_of_finiteDimensional_range hF)
     · exact hasEigenvalue_subset_spectrum h
 
 end Spectrum
