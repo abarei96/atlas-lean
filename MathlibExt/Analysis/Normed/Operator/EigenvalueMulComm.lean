@@ -23,8 +23,7 @@ in `MathlibExt.LinearAlgebra.Eigenspace.MulComm`, obtained by coercing the
 products to endomorphisms.
 
 As a corollary, `T† * T` and `T * T†` have the same nonzero eigenvalues on a
-Hilbert space: the nonzero eigenvalues of `T† * T` are the squares of the
-singular values of `T`.
+Hilbert space.
 
 Eigenvalues here are stated for the underlying endomorphisms
 `((S * T : E →L[𝕜] E) : Module.End 𝕜 E)`, matching the convention used in
@@ -82,8 +81,7 @@ theorem finrank_genEigenspace_mul_eq (S T : E →L[𝕜] E) {μ : 𝕜} (hμ : �
     (S : Module.End 𝕜 E) (T : Module.End 𝕜 E) hμ k
 
 /-- A nonzero scalar is an eigenvalue of `T† * T` iff it is an eigenvalue of
-`T * T†`, on a Hilbert space. The nonzero eigenvalues of `T† * T` are the
-squares of the singular values of `T`. -/
+`T * T†`, on a Hilbert space. -/
 theorem hasEigenvalue_adjoint_mul_self_iff {𝕜 E : Type*} [RCLike 𝕜]
     [NormedAddCommGroup E] [InnerProductSpace 𝕜 E] [CompleteSpace E]
     (T : E →L[𝕜] E) {μ : 𝕜} (hμ : μ ≠ 0) :

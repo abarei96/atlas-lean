@@ -31,10 +31,8 @@ algebraic multiplicities for square matrices, but says nothing about geometric
 multiplicities; the linear equivalence below does, and it needs no
 finite-dimensionality hypothesis.
 
-The eigenvalue transfer is the classical lemma behind the symmetry between
-`T† * T` and `T * T†` in singular-value theory: both have the same nonzero
-eigenvalues, and the nonzero eigenvalues of `T† * T` are the squares of the
-singular values of `T`. The bounded-operator version is in
+The eigenvalue transfer also applies to `T† * T` and `T * T†`, which have the
+same nonzero eigenvalues. The bounded-operator version is in
 `MathlibExt.Analysis.Normed.Operator.EigenvalueMulComm`.
 
 ## Main declarations
