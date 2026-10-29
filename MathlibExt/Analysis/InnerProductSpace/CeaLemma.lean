@@ -102,7 +102,7 @@ theorem variationalSolution_spec {E : Type*} [NormedAddCommGroup E]
 /-- Uniqueness for the variational problem: two vectors satisfying the same
 variational equation agree, by coercivity. -/
 theorem eq_of_forall_bilin {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [CompleteSpace E] {B : E →L[ℝ] E →L[ℝ] ℝ}
+    [InnerProductSpace ℝ E] {B : E →L[ℝ] E →L[ℝ] ℝ}
     (hB : IsCoercive B) {L : E →L[ℝ] ℝ} {x y : E}
     (hx : ∀ w, B x w = L w) (hy : ∀ w, B y w = L w) : x = y := by
   obtain ⟨α, hα, hco⟩ := hB
@@ -186,7 +186,7 @@ theorem galerkinSolution_eq_of_forall {B : V →L[ℝ] V →L[ℝ] ℝ} (hB : Is
       = (L.comp W.subtypeL) w := by
     intro w
     simpa [restrictBilin_apply] using galerkinSolution_spec hB hW L w
-  exact @eq_of_forall_bilin W _ _ hW.completeSpace_coe _ (isCoercive_restrictBilin hB)
+  exact @eq_of_forall_bilin W _ _ _ (isCoercive_restrictBilin hB)
     (L.comp W.subtypeL) _ _ h1 h2
 
 /-- Existence for the Galerkin problem, in bare existential form. -/
