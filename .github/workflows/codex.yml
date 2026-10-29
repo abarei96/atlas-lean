@@ -131,6 +131,7 @@ jobs:
                 context.payload.comment?.body ?? null,
             };
             let ref;
+            let repo = context.payload.repository.full_name;
             let base = "";
             if (
               context.eventName === "issue_comment" &&
@@ -168,15 +169,29 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: number,
               });
+              repo = pr.head.repo?.full_name ?? repo;
               const expectedRepo =
                 context.payload.repository.full_name.toLowerCase();
               const actualRepo =
                 pr.head.repo?.full_name?.toLowerCase();
               // Fork contents are untrusted. They must not run with provider
-              // credentials while Codex uses danger-full-access.
-              if (actualRepo !== expectedRepo) {
+              // credentials while Codex uses danger-full-access on an
+              // automatic (pull_request) run: that trigger comes from the fork
+              // author, with no maintainer approval. A comment-triggered run is
+              // different: check_auth already verified the commenter has
+              // write/maintain/admin, so the maintainer's explicit @codex
+              // comment is the approval to review this fork.
+              if (!actualRepo) {
                 throw new Error(
-                  "Codex execution is disabled for fork pull requests."
+                  "Cannot review a pull request whose head repository is unavailable."
+                );
+              }
+              if (
+                actualRepo !== expectedRepo &&
+                context.eventName === "pull_request"
+              ) {
+                throw new Error(
+                  "Codex execution is disabled for automatic review of fork pull requests; ask a maintainer to comment @codex."
                 );
               }
               ref = pr.head.sha;
@@ -263,17 +278,37 @@ jobs:
               `${JSON.stringify(eventContext, null, 2)}\n`
             );
             core.setOutput("ref", ref);
+            core.setOutput("repo", repo);
             core.setOutput("base", base);
             core.setOutput("context", contextPath);
 
       - name: Checkout request target
         if: steps.check_auth.outputs.authorized == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.target.outputs.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-          show-progress: false
+        env:
+          TARGET_REPO: ${{ steps.target.outputs.repo }}
+          TARGET_REF: ${{ steps.target.outputs.ref }}
+        run: |
+          set -euo pipefail
+          # Fetch only the reviewed head SHA and its ancestry from the head
+          # repo. A fetch-depth-0 checkout of a fork would fetch every branch
+          # and tag from an attacker-controlled repo, letting a fork exhaust
+          # runner disk or the 40-minute budget with blobs on unrelated refs.
+          # --filter=blob:none goes further: blobs materialize on demand
+          # for the checkout and the diff below, so blobs that exist only
+          # in intermediate commits (added then deleted, never in the
+          # final tree or the diff) are never downloaded at all.
+          # No credentials here: the repos are public and the fetch URL
+          # carries no token (the checkout this replaces used
+          # persist-credentials: false for the same reason).
+          if [[ -z "$TARGET_REPO" || -z "$TARGET_REF" ]]; then
+            echo "Missing checkout target" >&2
+            exit 1
+          fi
+          git init -q -b main
+          git remote set-url origin "https://github.com/${TARGET_REPO}.git" 2>/dev/null ||
+            git remote add origin "https://github.com/${TARGET_REPO}.git"
+          git fetch --no-tags --filter=blob:none origin "$TARGET_REF"
+          git -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
 
       - name: Load trusted review guide
         if: steps.check_auth.outputs.authorized == 'true'
@@ -284,11 +319,42 @@ jobs:
           # A pull request must not be able to rewrite the policy used to review itself.
           guide="$RUNNER_TEMP/REVIEWING.md"
           if [[ -n "$BASE_SHA" ]]; then
+            # The checkout is the (possibly fork) head repo, which may not
+            # contain the base SHA if main advanced since the PR opened.
+            # Fetch it from the trusted base repo (public read, no
+            # credentials). Best-effort: git show below is the gate, and
+            # the object is already present for same-repo PRs.
+            git fetch --no-tags "https://github.com/${{ github.repository }}.git" "$BASE_SHA" || true
             git show "$BASE_SHA:REVIEWING.md" > "$guide"
           else
             git show "HEAD:REVIEWING.md" > "$guide"
           fi
           test -s "$guide"
+
+      - name: Guard fetched size
+        if: steps.check_auth.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          # Fail closed before any secret-holding step runs if the
+          # materialized checkout is far beyond a normal one (a .git of
+          # ~50 MiB plus a ~240 MiB working tree today). This counts both
+          # object storage and the working tree, where checkout duplicates
+          # materialized blobs. The time bound is the 40-minute job timeout.
+          # It deliberately runs after fetch/checkout rather than as a
+          # quota during materialization: GitHub-hosted runners are
+          # single-use, so exhaustion during fetch/checkout only fails
+          # this job (those steps fail before Codex runs), while a tmpfs
+          # remount of the workspace would risk breaking every review if
+          # the runner environment ever denies the mount. 2 GiB leaves
+          # ample headroom for legitimate growth.
+          max_kib=2097152
+          total_kib="$(du -sk . | cut -f1)"
+          git_kib="$(du -sk .git | cut -f1)"
+          echo "Materialized checkout: ${total_kib} KiB total (${git_kib} KiB .git), limit ${max_kib} KiB"
+          if (( total_kib > max_kib )); then
+            echo "::error title=Fetched size::Materialized checkout is ${total_kib} KiB, over the ${max_kib} KiB limit; refusing to review." >&2
+            exit 1
+          fi
 
       - name: Prepare isolated Codex runtime
         if: steps.check_auth.outputs.authorized == 'true'
