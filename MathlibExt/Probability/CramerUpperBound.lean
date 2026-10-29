@@ -24,10 +24,11 @@ public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 /-!
 # Fixed-direction Chernoff bounds for empirical means
 
-For i.i.d. random vectors
-`X₁, X₂, …` in `ℝᵈ`, the laws `μₙ` of the empirical means `Aₙ = (1/n) ∑_{i<n} Xᵢ`
-satisfy, for every measurable set `F`, every `ξ ∈ ℝᵈ`, and every real `a` that
-lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on `F` (where `Λ(ξ) = log E[exp ⟪ξ, X₁⟫]`),
+For measurable i.i.d. random vectors `X₀, X₁, …` in `ℝᵈ` on a probability space,
+fix a direction `ξ ∈ ℝᵈ` such that `exp ⟪ξ, X₀⟫` is integrable. The laws `μₙ`
+of the empirical means `Aₙ = (1/n) ∑_{i<n} Xᵢ` satisfy, for every measurable set
+`F` and every real `a` that lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on `F`
+(where `Λ(ξ) = log E[exp ⟪ξ, X₀⟫]`),
 
 `μₙ(F) ≤ exp(-n * a)`.
 
@@ -39,6 +40,12 @@ moment of the sum. For fixed `ξ`, the asymptotic rate is
 `inf_{x ∈ F} Λ*(x)`, where `Λ*(x) = sup_ξ (⟪ξ, x⟫ - Λ(ξ))`, requires further
 arguments and hypotheses. For `Λ(ξ) = ξ²/2` and `F = {-1, 1}`, these two optimized
 rates are respectively `0` and `1/2`.
+
+Here optimization is over directions in the exponential-integrability domain.
+
+The exponential-integrability assumption is required for these bounds. The
+real-valued `logMGFVec` below uses the totalized Bochner integral and `Real.log`;
+outside exponential integrability it has value `0`, rather than an infinite MGF.
 
 Source: `v1/Atlas/TheoryOfProbability/code/CramerTheorem.lean`, `cramer_theorem`
 (Lecture 13). In v1 the full Cramér theorem (both bounds, with the limiting
@@ -66,11 +73,15 @@ noncomputable def empiricalMeanMeasureVec {d : ℕ} (X : ℕ → Ω → Euclidea
     (μ : Measure Ω) (n : ℕ) : Measure (EuclideanSpace ℝ (Fin d)) :=
   μ.map (fun ω => (n : ℝ)⁻¹ • (∑ i ∈ Finset.range n, X i ω))
 
-/-- **Vector-valued cumulant generating function** `Λ(t) = log E[exp ⟪t, X⟫]`.
+/-- **Real-valued log-MGF expression** `Λ(t) = log E[exp ⟪t, X⟫]`.
 
 For a random vector `X : Ω → ℝᵈ`, this returns the logarithm of the moment
 generating function evaluated at the dual variable `t ∈ ℝᵈ`, using the Euclidean
-inner product. Ported verbatim from v1. -/
+inner product. Under a probability measure it represents the cumulant generating
+function at directions where the exponential is integrable. For a nonintegrable
+exponential, the Bochner integral is `0` and `Real.log 0 = 0`, so this definition
+returns `0`. The bounds below explicitly require exponential integrability.
+Ported from v1. -/
 noncomputable def logMGFVec {d : ℕ} (X : Ω → EuclideanSpace ℝ (Fin d))
     (μ : Measure Ω) (t : EuclideanSpace ℝ (Fin d)) : ℝ :=
   Real.log (∫ ω, Real.exp ⟪t, X ω⟫_ℝ ∂μ)
@@ -80,6 +91,9 @@ in event form: if on the event `E` the empirical mean
 `(1/n) ∑_{i<n} Xᵢ` satisfies the threshold inequality
 `a ≤ t * (empirical mean) - log (mgf of X₁ at t)`, then
 `μ(E) ≤ exp(-n * a)`.
+
+Assume a probability measure, measurable independent identically distributed
+coordinates, and integrability of `exp (t * X₀)`.
 
 This is the one-dimensional core of the Cramér upper bound. The proof splits
 on the sign of `t`: for `t > 0` it applies Mathlib's upper-tail Chernoff bound
@@ -237,7 +251,8 @@ theorem measure_empiricalMean_le_of_threshold {X : ℕ → Ω → ℝ}
 
 /-- **Fixed-direction Chernoff bound.** For i.i.d. random vectors in `ℝᵈ`,
 the law `μₙ` of the empirical mean satisfies `μₙ(F) ≤ exp(-n * a)` whenever
-`a` lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on `F`. -/
+`a` lower-bounds `⟪ξ, ·⟫ - Λ(ξ)` on measurable `F`. Assume a probability measure,
+measurable coordinates and integrability of `exp ⟪ξ, X₀⟫` at this direction. -/
 theorem cramer_upper_bound {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
     [IsProbabilityMeasure μ]
     (hXmeas : ∀ i, Measurable (X i)) (hXindep : iIndepFun X μ)
@@ -302,7 +317,10 @@ theorem cramer_upper_bound {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin
 
 /-- **Fixed-direction Chernoff bound, rate form.** For a fixed `ξ` and
 `s = inf_{x ∈ F} (⟪ξ, x⟫ - Λ(ξ))`, the `n`-th root of `μₙ(F)` has limsup at most
-`exp(-s)`. Optimizing over `ξ` gives the supremum of these fixed-direction rates;
+`exp(-s)`. Assume measurable i.i.d. coordinates under a probability measure,
+measurable `F`, exponential integrability at `ξ`, and a bounded-below rate image
+on `F`, with its real-valued `sInf` used for `s`.
+Optimizing over admissible `ξ` gives the supremum of these fixed-direction rates;
 the Legendre-rate Cramér upper bound requires further arguments. -/
 theorem cramer_upper_bound_rate {d : ℕ} {X : ℕ → Ω → EuclideanSpace ℝ (Fin d)}
     [IsProbabilityMeasure μ]
