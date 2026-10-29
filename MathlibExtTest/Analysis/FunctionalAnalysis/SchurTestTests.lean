@@ -57,35 +57,39 @@ private theorem diag_col_sum (j : Fin 2) :
     ∑ i : Fin 2, ‖Matrix.diagonal (![1, 2] : Fin 2 → ℂ) i j‖ ≤ 2 := by
   fin_cases j <;> rw [Fin.sum_univ_two] <;> simp [Matrix.diagonal]
 
-/-- The identity matrix acts as the identity through `schurCLM`. -/
+/-- The canonical identity matrix operator acts as the identity. -/
 theorem schur_identity_apply (x : EuclideanSpace ℂ (Fin 2)) :
-    schurCLM (1 : Matrix (Fin 2) (Fin 2) ℂ) zero_le_one zero_le_one one_row_sum
-      one_col_sum x = x := by
-  simp [schurCLM_apply]
+    (Matrix.toEuclideanLin (1 : Matrix (Fin 2) (Fin 2) ℂ)).toContinuousLinearMap x = x := by
+  simp [Matrix.toEuclideanLin]
 
 /-- The operator norm of the identity matrix is at most `1`. -/
 theorem schur_identity_norm_le :
-    ‖schurCLM (1 : Matrix (Fin 2) (Fin 2) ℂ) zero_le_one zero_le_one one_row_sum
-      one_col_sum‖ ≤ 1 :=
-  norm_schurCLM_le_of_le _ zero_le_one one_row_sum one_col_sum
+    ‖(Matrix.toEuclideanLin (1 : Matrix (Fin 2) (Fin 2) ℂ)).toContinuousLinearMap‖ ≤ 1 := by
+  have h := norm_toEuclideanLin_le (1 : Matrix (Fin 2) (Fin 2) ℂ)
+    zero_le_one zero_le_one one_row_sum one_col_sum
+  simpa only [Real.sqrt_mul_self zero_le_one] using h
 
 /-- The operator norm of the all-ones matrix on `ℂ²` is at most `2`. -/
 theorem schur_allOnes_norm_le :
-    ‖schurCLM (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ) (by norm_num) (by norm_num)
-      allOnes_row_sum allOnes_col_sum‖ ≤ 2 :=
-  norm_schurCLM_le_of_le _ (by norm_num) allOnes_row_sum allOnes_col_sum
+    ‖(Matrix.toEuclideanLin
+      (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ)).toContinuousLinearMap‖ ≤ 2 := by
+  have h := norm_toEuclideanLin_le
+    (fun _ _ => (1 : ℂ) : Matrix (Fin 2) (Fin 2) ℂ)
+    (by norm_num) (by norm_num) allOnes_row_sum allOnes_col_sum
+  simpa only [Real.sqrt_mul_self (by norm_num : (0 : ℝ) ≤ 2)] using h
 
 /-- The operator norm of the zero matrix is `0`. -/
 theorem schur_zero_norm :
-    ‖schurCLM (0 : Matrix (Fin 2) (Fin 2) ℂ) le_rfl le_rfl
-      (fun _ => by simp) (fun _ => by simp)‖ = 0 := by
-  simp [schurCLM]
+    ‖(Matrix.toEuclideanLin (0 : Matrix (Fin 2) (Fin 2) ℂ)).toContinuousLinearMap‖ = 0 := by
+  simp
 
 /-- The operator norm of `diag (1, 2)` on `ℂ²` is at most `2`. -/
 theorem schur_diagonal_norm_le :
-    ‖schurCLM (Matrix.diagonal (![1, 2] : Fin 2 → ℂ)) (by norm_num) (by norm_num)
-      diag_row_sum diag_col_sum‖ ≤ 2 :=
-  norm_schurCLM_le_of_le _ (by norm_num) diag_row_sum diag_col_sum
+    ‖(Matrix.toEuclideanLin
+      (Matrix.diagonal (![1, 2] : Fin 2 → ℂ))).toContinuousLinearMap‖ ≤ 2 := by
+  have h := norm_toEuclideanLin_le (Matrix.diagonal (![1, 2] : Fin 2 → ℂ))
+    (by norm_num) (by norm_num) diag_row_sum diag_col_sum
+  simpa only [Real.sqrt_mul_self (by norm_num : (0 : ℝ) ≤ 2)] using h
 
 /-! Canonical operator and scoped L2 importing clients. -/
 
