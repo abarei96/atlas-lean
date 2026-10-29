@@ -8,8 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
-public import Mathlib.MeasureTheory.Function.ConditionalExpectation.Real
-public import Mathlib.MeasureTheory.Function.UniformIntegrable
+public import MathlibExt.Probability.BackwardsMartingales
 
 /-!
 # Backwards martingales
