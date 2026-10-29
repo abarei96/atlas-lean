@@ -12,6 +12,7 @@ public import Mathlib.Algebra.Algebra.Spectrum.Basic
 public import Mathlib.Analysis.InnerProductSpace.Adjoint
 public import Mathlib.Analysis.InnerProductSpace.Positive
 public import Mathlib.LinearAlgebra.Eigenspace.Basic
+import Mathlib.Analysis.CStarAlgebra.Spectrum
 
 @[expose] public section
 
@@ -72,7 +73,7 @@ theorem ringInverse_smul_one (z : ℂ) :
     rw [hunit.unit_spec, smul_mul_smul, mul_one, mul_inv_cancel₀ hz, one_smul]
 
 /-- The Cayley transform of an operator `A`: `(A - i) * (A + i)⁻¹`. The
-factor `A + i • 1` is a unit exactly when `A` is self-adjoint (see
+factor `A + i • 1` is a unit when `A` is self-adjoint on a complete Hilbert space (see
 `isUnit_add_I_smul_one_of_isSelfAdjoint` below), in which case the ring
 inverse here is the genuine operator inverse. -/
 noncomputable def cayleyTransform : H →L[ℂ] H :=
@@ -135,16 +136,6 @@ theorem isUnit_add_I_smul_one_of_isSelfAdjoint (hA : IsSelfAdjoint A) :
 theorem isUnit_sub_I_smul_one_of_isSelfAdjoint (hA : IsSelfAdjoint A) :
     IsUnit (A - Complex.I • (1 : H →L[ℂ] H)) :=
   isUnit_sub_smul_one_of_isSelfAdjoint_of_im_ne_zero A hA (w := Complex.I) (by simp)
-
-/-- The spectrum of a self-adjoint operator is real. -/
-theorem im_eq_zero_of_mem_spectrum_of_isSelfAdjoint (hA : IsSelfAdjoint A)
-    {w : ℂ} (hw : w ∈ spectrum ℂ A) : w.im = 0 := by
-  by_contra hne
-  rw [spectrum.mem_iff] at hw
-  exact hw (by
-    have h := isUnit_sub_smul_one_of_isSelfAdjoint_of_im_ne_zero A hA hne
-    rw [Algebra.algebraMap_eq_smul_one, ← neg_sub]
-    exact h.neg)
 
 /-- The inverse of `A + i • 1` is a unit for self-adjoint `A`. -/
 theorem isUnit_ringInverse_add_I_of_isSelfAdjoint (hA : IsSelfAdjoint A) :
@@ -501,17 +492,7 @@ theorem spectrum_cayleyTransform (hA : IsSelfAdjoint A) :
 /-- Points of the spectrum of the Cayley transform lie on the unit circle. -/
 theorem norm_eq_one_of_mem_spectrum_cayleyTransform (hA : IsSelfAdjoint A)
     {μ : ℂ} (hμ : μ ∈ spectrum ℂ (cayleyTransform A)) : ‖μ‖ = 1 := by
-  rw [spectrum_cayleyTransform A hA] at hμ
-  obtain ⟨w, hwmem, rfl⟩ := hμ
-  have hwim : w.im = 0 := im_eq_zero_of_mem_spectrum_of_isSelfAdjoint A hA hwmem
-  have hwI : w + Complex.I ≠ 0 := by
-    intro h
-    have him : (w + Complex.I).im = 1 := by simp [Complex.add_im, hwim]
-    rw [h] at him
-    simp at him
-  have hconj : (starRingEnd ℂ) (w + Complex.I) = w - Complex.I := by
-    rw [map_add, Complex.conj_eq_iff_im.mpr hwim, Complex.conj_I, sub_eq_add_neg]
-  rw [norm_div, ← hconj, Complex.norm_conj, div_self (norm_ne_zero_iff.mpr hwI)]
+  exact spectrum.norm_eq_one_of_unitary (mem_unitary_cayleyTransform A hA) hμ
 
 /-- The eigenvalue correspondence: for `μ ≠ 1`, `μ` is an eigenvalue of the
 Cayley transform `U` iff `i * (1 + μ) / (1 - μ)` is an eigenvalue of `A`. -/
