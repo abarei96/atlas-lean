@@ -9,6 +9,7 @@ LICENSE file in the root directory of this source tree.
 module
 
 public import MathlibExt.Probability.BlumenthalZeroOne
+import MathlibExtTest.Probability.BlumenthalZeroOneModels
 
 open MeasureTheory ProbabilityTheory
 open scoped ENNReal NNReal
@@ -17,12 +18,10 @@ namespace MathlibExt.Probability.BlumenthalZeroOneTest
 
 open MathlibExt.Probability.BlumenthalZeroOne
 
-/-- The natural filtration of `B` augmented by a coin variable `Z`: at time
-`t` it is the join of the natural filtration of `B` and `σ(Z)`. This is the
-filtration of the Wiener-measure-times-fair-coin model used to show that
-v1's `blumenthal_zero_one` is false as stated: v1's `IsBrownianMotion` does
-not require the filtration to be the natural one, so the coin can be smuggled
-into the germ σ-algebra. -/
+/-- The natural filtration of `B` augmented by a measurable real-valued
+variable `Z`: its value at `t` is the join of `σ(B_u : u ≤ t)` and `σ(Z)`.
+The coin information is present at every positive time, hence in the germ.
+The constructed zero-process/fair-coin model below realizes this boundary. -/
 def augFiltration {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*} [MeasurableSpace E]
     (B : NNReal → Ω → E) (hB : ∀ t, Measurable (B t)) (Z : Ω → ℝ)
     (hZ : Measurable Z) : Filtration NNReal m where
@@ -49,23 +48,19 @@ theorem coin_event_mem_germ {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     MeasurableSpace.measurableSet_comap.mpr ⟨{1}, measurableSet_singleton 1, rfl⟩
   exact hle _ hmeas
 
-/-- **Counterexample to v1's `blumenthal_zero_one`.** For the augmented
-filtration, v1's `IsBrownianMotion` can hold (it is satisfied in the
-Wiener-measure-times-fair-coin model, where the Brownian coordinate and the
-coin are independent) while the germ σ-algebra contains the coin event
-`{Z = 1}`, which has probability `1 / 2`, hence is neither null nor conull.
-So v1's statement, which quantifies over an arbitrary filtration satisfying
-`IsBrownianMotion`, is false as stated; the corrected theorem
-`blumenthal_zero_one_natural` is about the germ of the *natural* filtration.
-The hypotheses `hBM` and `hHalf` are jointly satisfiable (Wiener × coin);
-the coin model itself is not constructed in Lean. -/
-theorem v1_blumenthal_counterexample {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
+/-- A conditional helper: if the process contract holds for the augmented
+filtration and the displayed event has probability `1/2`, that event is a
+nontrivial germ event. Both substantive facts remain explicit hypotheses.
+The separately constructed fair-coin/zero-process model below supplies
+actual witnesses without these assumptions. This preserves the exact old
+conditional proposition under the corrected process specification. -/
+theorem conditional_augmented_germ_nontrivial {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E]
     {B : NNReal → Ω → E} (hB : ∀ t, Measurable (B t)) {Z : Ω → ℝ} (hZ : Measurable Z)
     {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B (augFiltration B hB Z hZ) μ x)
+    (hBM : IsContinuousIndependentIncrementProcess B (augFiltration B hB Z hZ) μ x)
     (hHalf : μ {ω | Z ω = 1} = 1 / 2) :
-    IsBrownianMotion B (augFiltration B hB Z hZ) μ x ∧
+    IsContinuousIndependentIncrementProcess B (augFiltration B hB Z hZ) μ x ∧
       MeasurableSet[germSigmaAlgebraZero (augFiltration B hB Z hZ)] {ω | Z ω = 1} ∧
       μ {ω | Z ω = 1} ≠ 0 ∧ μ {ω | Z ω = 1} ≠ 1 := by
   refine ⟨hBM, coin_event_mem_germ hB hZ, ?_, ?_⟩
@@ -80,13 +75,35 @@ theorem v1_blumenthal_counterexample {Ω : Type*} {m : MeasurableSpace Ω} {E : 
     rw [ENNReal.toReal_div] at h
     norm_num at h
 
-/-- The corrected theorem applies to germ events of the natural filtration. -/
+/-- The general zero-one theorem applies to events in the natural germ. -/
 example {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*} [MeasurableSpace E] [AddCommGroup E]
     [PseudoMetricSpace E] [BorelSpace E] [SecondCountableTopology E] [ContinuousAdd E]
     [ContinuousSub E] {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
     {A : Set Ω} (hA : MeasurableSet[naturalGerm B hB] A) :
     μ A = 0 ∨ μ A = 1 :=
-  blumenthal_zero_one_natural hBM hB hA
+  zero_one_naturalGerm hBM hB hA
+
+/-- The concrete coin-augmented filtration is the constant top filtration. -/
+theorem zeroProcess_augFiltration_eq_top :
+    augFiltration zeroProcess zeroProcess_measurable coin coin_measurable = ⊤ := by
+  apply Filtration.ext
+  funext t
+  change naturalFiltration zeroProcess zeroProcess_measurable t ⊔
+    MeasurableSpace.comap coin inferInstance = (⊤ : MeasurableSpace Bool)
+  simp [coin_comap_eq_top]
+
+/-- The actual fair-Boolean zero-process model has a nontrivial augmented germ.
+There is no assumed process witness or assumed event probability. -/
+theorem constant_zero_augmented_countermodel :
+    IsContinuousIndependentIncrementProcess zeroProcess
+      (augFiltration zeroProcess zeroProcess_measurable coin coin_measurable) fairBool 0 ∧
+      MeasurableSet[germSigmaAlgebraZero
+        (augFiltration zeroProcess zeroProcess_measurable coin coin_measurable)] {b | coin b = 1} ∧
+      fairBool {b | coin b = 1} = 1 / 2 ∧
+      fairBool {b | coin b = 1} ≠ 0 ∧ fairBool {b | coin b = 1} ≠ 1 := by
+  have h := conditional_augmented_germ_nontrivial zeroProcess_measurable coin_measurable
+    (zeroProcess_spec _) coin_event_probability
+  exact ⟨h.1, h.2.1, coin_event_probability, h.2.2.1, h.2.2.2⟩
 
 end MathlibExt.Probability.BlumenthalZeroOneTest

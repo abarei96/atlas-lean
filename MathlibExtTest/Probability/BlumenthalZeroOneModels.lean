@@ -47,19 +47,16 @@ def coin (b : Bool) : ℝ := if b then 1 else 0
 
 theorem coin_measurable : Measurable coin := measurable_from_top
 
-/-- The zero process satisfies every field of the original weak contract,
+/-- The zero process satisfies the continuous-independent-increment contract,
 for any filtration on the fair-coin space. -/
 theorem zeroProcess_spec (𝓕 : Filtration NNReal (inferInstance : MeasurableSpace Bool)) :
-    IsBrownianMotion zeroProcess 𝓕 fairBool 0 where
+    IsContinuousIndependentIncrementProcess zeroProcess 𝓕 fairBool 0 where
   isProbabilityMeasure := inferInstance
   start := Filter.Eventually.of_forall (fun _ => rfl)
   adapted := fun _ => measurable_const
   indep_incr := by
     intro s t _
     simpa [zeroProcess] using (indep_bot_right (𝓕 s) (μ := fairBool))
-  gaussian_incr := by
-    intro s t _
-    exact ⟨Measure.map (fun ω => zeroProcess t ω - zeroProcess s ω) fairBool, rfl⟩
   continuous_path := Filter.Eventually.of_forall (fun _ => continuous_const)
 
 /-- The nontrivial coin event has its computed probability, without an `hHalf` assumption. -/
@@ -112,7 +109,7 @@ theorem top_germ_eq_top :
 /-- A constructed countermodel to an arbitrary-filtration zero-one claim
 under the original weak specification. -/
 theorem constant_zero_top_countermodel :
-    IsBrownianMotion zeroProcess ⊤ fairBool 0 ∧
+    IsContinuousIndependentIncrementProcess zeroProcess ⊤ fairBool 0 ∧
       MeasurableSet[germSigmaAlgebraZero
         (⊤ : Filtration NNReal (inferInstance : MeasurableSpace Bool))] {b | coin b = 1} ∧
       fairBool {b | coin b = 1} = 1 / 2 ∧
@@ -139,7 +136,7 @@ theorem zeroProcess_naturalGerm : naturalGerm zeroProcess zeroProcess_measurable
 theorem coin_event_not_mem_naturalGerm :
     ¬ MeasurableSet[naturalGerm zeroProcess zeroProcess_measurable] {b | coin b = 1} := by
   intro h
-  have hzeroOne := blumenthal_zero_one_natural (zeroProcess_spec ⊤) zeroProcess_measurable h
+  have hzeroOne := zero_one_naturalGerm (zeroProcess_spec ⊤) zeroProcess_measurable h
   exact hzeroOne.elim coin_event_nontrivial.1 coin_event_nontrivial.2
 
 end MathlibExt.Probability.BlumenthalZeroOneTest

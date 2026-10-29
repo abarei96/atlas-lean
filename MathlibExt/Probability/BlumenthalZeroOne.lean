@@ -28,26 +28,35 @@ open scoped ENNReal NNReal
 namespace MathlibExt.Probability.BlumenthalZeroOne
 
 /-!
-# Blumenthal's 0-1 law for the natural filtration of Brownian motion
+# A natural-germ zero-one law for continuous processes with independent increments
 
-For a Brownian motion `B`, the germ σ-algebra of its *natural* filtration
-(the intersection `⋂_{t > 0} σ(B_u : u ≤ t)`) is trivial: every germ event
-has probability `0` or `1`.
+For a continuous process `B` with independent increments, a probability law,
+a deterministic a.e. initial value, and adaptedness to a filtration, every
+natural-germ event has probability `0` or `1`. The natural germ is
+`⋂_{t > 0} σ(B_u : u ≤ t)`. The proof uses independence, path continuity,
+dominated convergence and a pi-lambda argument.
 
-Source: Durrett, *Probability: Theory and Examples*, Lecture 36, and
-`v1/Atlas/TheoryOfProbability/code/Blumenthal01.lean`.
+Source: Durrett, *Probability: Theory and Examples*, Lecture 36, and the
+archived formulation in `v1/Atlas/TheoryOfProbability/code/Blumenthal01.lean`.
+The theorem here is a general independent-increment-process form of the
+classical Brownian natural-filtration zero-one law. Brownian motion is a
+mathematical special case; its actual Gaussian increment law and Wiener
+measure construction are outside the formalization in this file.
 
-## Statement correction
+## Corrections to the archived specification and scope
 
-The statement in `v1` is about the germ of an *arbitrary* filtration `𝓕`
-satisfying `IsBrownianMotion`, and as stated it is false: take the product of
-Wiener measure with a fair coin, let `B` be the Brownian coordinate, let `Z`
-be the coin, and let `𝓕_t = σ(B_u : u ≤ t) ∨ σ(Z)`. This satisfies v1's
-`IsBrownianMotion` (adapted, independent increments by joint independence of
-the past, the coin and the increment, `B 0 = 0`, a.e. continuous paths), the
-coin is in the germ σ-algebra, and the event `{Z = 1}` has probability `1/2`.
-The theorem proved here is the book's statement: the germ of the *natural*
-filtration of `B` is trivial.
+The archived structure named `IsBrownianMotion` required only that each
+increment's pushforward measure equal some measure. Choosing that same
+pushforward satisfies this field for every process. The corrected
+`IsContinuousIndependentIncrementProcess` retains all five meaningful fields
+and drops this tautology, without imposing a Gaussian or stationary law.
+
+The archived arbitrary-filtration zero-one statement is false under its
+encoded weak specification. The importing tests construct a fair Boolean
+probability space with the constant zero process and constant top filtration.
+The coin event has probability `1/2` and belongs to the coin-augmented germ.
+The natural germ of the same process is trivial. The theorem below keeps the
+natural-filtration scope and the complete original proof of that valid result.
 -/
 
 /-- The *germ σ-algebra at `0`* of a filtration `𝓕` indexed by `NNReal`,
@@ -59,14 +68,14 @@ def germSigmaAlgebraZero {Ω : Type*} {m : MeasurableSpace Ω} (𝓕 : Filtratio
     MeasurableSpace Ω :=
   ⨅ t > (0 : NNReal), 𝓕 t
 
-/-- An abstract specification of a *Brownian motion* `B : NNReal → Ω → E`
-started at `x ∈ E`, adapted to a filtration `𝓕` on `(Ω, m, μ)`. The fields
-require that `μ` is a probability measure, `B 0 = x` almost surely, `B` is
-adapted, increments `B_t - B_s` are independent of `𝓕_s` for `s < t`, each
-increment has *some* law on `E` (the Gaussian distribution in the standard
-case), and the sample paths `t ↦ B_t ω` are continuous for a.e. `ω`. Ported
-verbatim from `v1/Atlas/TheoryOfProbability/code/Blumenthal01.lean`. -/
-structure IsBrownianMotion {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
+/-- A continuous process `B : NNReal → Ω → E` with independent increments,
+started at `x` and adapted to `𝓕`. The measure is a probability measure,
+`B 0 = x` a.e., each increment after `s` is independent of `𝓕 s`, and a.e.
+paths are continuous. These are the five meaningful fields of the archived
+v1 specification; its tautological pushforward-law field is omitted.
+No Gaussian-law or stationary-increment condition is encoded. -/
+structure IsContinuousIndependentIncrementProcess
+    {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E]
     (B : NNReal → Ω → E) (𝓕 : Filtration NNReal m) (μ : Measure Ω) (x : E) : Prop where
   isProbabilityMeasure : IsProbabilityMeasure μ
@@ -74,15 +83,14 @@ structure IsBrownianMotion {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
   adapted : Adapted 𝓕 (fun t => B t)
   indep_incr : ∀ s t : NNReal, s < t →
     Indep (𝓕 s) (MeasurableSpace.comap (fun ω => B t ω - B s ω) inferInstance) μ
-  gaussian_incr : ∀ s t : NNReal, s < t →
-    ∃ (ν : Measure E), Measure.map (fun ω => B t ω - B s ω) μ = ν
   continuous_path : ∀ᵐ ω ∂μ, Continuous (fun t : NNReal => B t ω)
 
-/-- Each coordinate of a Brownian motion is measurable. -/
-theorem IsBrownianMotion.measurable {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
+/-- Each coordinate of the adapted continuous process is measurable. -/
+theorem IsContinuousIndependentIncrementProcess.measurable
+    {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (t : NNReal) :
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (t : NNReal) :
     Measurable (B t) :=
   (hBM.adapted t).mono (𝓕.le t) le_rfl
 
@@ -131,12 +139,12 @@ private theorem sum_Iic_increments {Ω : Type*} {E : Type*} [AddCommGroup E] {k 
 /-- The past and the consecutive increments along a strictly increasing
 partition are jointly independent. The proof peels off the maximal increment:
 everything else is measurable with respect to its left endpoint's filtration,
-which is independent of that increment by `IsBrownianMotion.indep_incr`. -/
+which is independent of that increment by `IsContinuousIndependentIncrementProcess.indep_incr`. -/
 private theorem iIndep_incrSigma {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E] [BorelSpace E]
     [SecondCountableTopology E] [ContinuousSub E] {k : ℕ} {𝓕 : Filtration NNReal m}
     {B : NNReal → Ω → E} {μ : Measure Ω} {x : E} {τ : Fin (k + 1) → NNReal}
-    (hτ : StrictMono τ) (hBM : IsBrownianMotion B 𝓕 μ x) :
+    (hτ : StrictMono τ) (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) :
     iIndep (incrSigma 𝓕 B τ) μ := by
   have _ := hBM.isProbabilityMeasure
   rw [iIndep_iff]
@@ -254,7 +262,8 @@ adapted. -/
 theorem naturalFiltration_le {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*}
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t)) (t : NNReal) :
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x)
+    (hB : ∀ t, Measurable (B t)) (t : NNReal) :
     naturalFiltration B hB t ≤ 𝓕 t := by
   apply iSup₂_le
   intro u hu
@@ -271,7 +280,7 @@ private theorem measurable_increment {Ω : Type*} {m : MeasurableSpace Ω} {E : 
     [MeasurableSpace E] [AddCommGroup E] [TopologicalSpace E] [BorelSpace E]
     [SecondCountableTopology E] [ContinuousSub E]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) {s t : NNReal} (h : s ≤ t) :
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) {s t : NNReal} (h : s ≤ t) :
     Measurable[𝓕 t] (fun ω => B t ω - B s ω) :=
   (hBM.adapted t).sub ((hBM.adapted s).mono (𝓕.mono h) le_rfl)
 
@@ -367,7 +376,7 @@ private theorem integral_indicator_mul_continuous
     [TopologicalSpace E] [BorelSpace E] [SecondCountableTopology E] [ContinuousAdd E]
     [ContinuousSub E] {ι : Type*} [Fintype ι]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
     {A : Set Ω} (hA : MeasurableSet[naturalGerm B hB] A)
     {u : ι → NNReal} (hu : ∀ i, 0 < u i)
     {f : (ι → E) → ℝ} (hf_cont : Continuous f) (hf_bdd : ∃ C, ∀ y, |f y| ≤ C) :
@@ -635,7 +644,7 @@ private theorem measure_inter_open_cylinder
     [PseudoMetricSpace E] [BorelSpace E] [SecondCountableTopology E] [ContinuousAdd E]
     [ContinuousSub E] {ι : Type*} [Fintype ι]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
     {A : Set Ω} (hA : MeasurableSet[naturalGerm B hB] A)
     {u : ι → NNReal} (hu : ∀ i, 0 < u i)
     {O : ι → Set E} (hO : ∀ i, IsOpen (O i)) :
@@ -846,7 +855,7 @@ private theorem measure_inter_of_naturalFiltration
     [PseudoMetricSpace E] [BorelSpace E] [SecondCountableTopology E] [ContinuousAdd E]
     [ContinuousSub E]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
     {A : Set Ω} (hA : MeasurableSet[naturalGerm B hB] A) (s : NNReal)
     {C : Set Ω} (hC : MeasurableSet[naturalFiltration B hB s] C) :
     μ (A ∩ C) = μ A * μ C := by
@@ -999,15 +1008,15 @@ private theorem measure_inter_of_naturalFiltration
         (fun i => ((naturalFiltration B hB).le s) _ (hfm i)) ih
   exact hP C hC
 
-/-- **Blumenthal's 0-1 law** (corrected form). Every event in the germ
-σ-algebra of the natural filtration of a Brownian motion has probability
-`0` or `1`. -/
-theorem blumenthal_zero_one_natural
+/-- Every event in the natural germ of a continuous process with independent
+increments and a deterministic a.e. initial value has probability `0` or `1`.
+This general form includes the classical Brownian natural-filtration law. -/
+theorem zero_one_naturalGerm
     {Ω : Type*} {m : MeasurableSpace Ω} {E : Type*} [MeasurableSpace E] [AddCommGroup E]
     [PseudoMetricSpace E] [BorelSpace E] [SecondCountableTopology E] [ContinuousAdd E]
     [ContinuousSub E]
     {B : NNReal → Ω → E} {𝓕 : Filtration NNReal m} {μ : Measure Ω} {x : E}
-    (hBM : IsBrownianMotion B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
+    (hBM : IsContinuousIndependentIncrementProcess B 𝓕 μ x) (hB : ∀ t, Measurable (B t))
     {A : Set Ω} (hA : MeasurableSet[naturalGerm B hB] A) :
     μ A = 0 ∨ μ A = 1 := by
   have _ := hBM.isProbabilityMeasure
