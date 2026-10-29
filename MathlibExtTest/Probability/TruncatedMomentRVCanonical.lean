@@ -64,14 +64,14 @@ example {W : ℝ → ℝ} {ρ : ℝ} (hW : Antitone W) (hWnn : ∀ t, 0 ≤ W t)
     (hρ : ρ < 0) {δ : ℝ} (hδ : 0 < δ) :
     ∃ C Y : ℝ, 0 < C ∧ 0 < Y ∧ ∀ x ≥ Y, ∀ u ∈ Set.Ioc 0 1,
       W (x * u) / W x ≤ C * u ^ (ρ - δ) :=
-  potter_upper hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto hc) hρ hδ
+  potter_upper hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto (c := c) hc) hρ hδ
 
 example {W : ℝ → ℝ} {ρ β : ℝ} (hW : Antitone W) (hWnn : ∀ t, 0 ≤ W t)
     (hWb : ∃ B, ∀ t, W t ≤ B) (hRV : IsRegularlyVarying W ρ)
     (hρ : ρ < 0) (hβ : 0 ≤ β) (hβρ : 0 < β + 1 + ρ) :
     Tendsto (fun x => (∫ t in (0 : ℝ)..x, t ^ β * W t) / (x ^ (β + 1) * W x))
       atTop (𝓝 (1 / (β + 1 + ρ))) :=
-  karamata_integral hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto hc)
+  karamata_integral hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto (c := c) hc)
     hρ hβ hβρ
 
 -- The primary claim keeps every probability/range/interval/normalization guard.
