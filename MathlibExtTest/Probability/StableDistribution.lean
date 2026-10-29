@@ -74,4 +74,30 @@ example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 1 :=
 example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 2 :=
   inDomainOfAttractionIndex_dirac a (by norm_num) (by norm_num)
 
+/-- Independent exact n=4 convolution control for the standard Gaussian. -/
+theorem characterization_gaussian_convolution_four :
+    convPowStable (gaussianReal 0 1) 4 = gaussianReal 0 4 := by
+  rw [convPowStable_gaussianReal]
+  norm_num
+
+/-- Fixed dilation four gives variance sixteen for every centering. -/
+theorem characterization_gaussian_affine_four (b : ℝ) :
+    (gaussianReal 0 1).map (fun x => 4 * x + b) = gaussianReal b 16 := by
+  have hmap : (gaussianReal 0 1).map (fun x => 4 * x + b) =
+      ((gaussianReal 0 1).map (fun x => 4 * x)).map (fun y => y + b) := by
+    rw [Measure.map_map (by fun_prop) (by fun_prop)]
+    rfl
+  rw [hmap, gaussianReal_map_const_mul, gaussianReal_map_add_const]
+  norm_num
+  congr 1
+
+/-- The two exact laws differ, independently of the old stability definition. -/
+theorem characterization_gaussian_four_not_affine_one (b : ℝ) :
+    convPowStable (gaussianReal 0 1) 4 ≠
+      (gaussianReal 0 1).map (fun x => 4 * x + b) := by
+  rw [characterization_gaussian_convolution_four, characterization_gaussian_affine_four]
+  intro h
+  have hv := (gaussianReal_ext_iff.mp h).2
+  norm_num at hv
+
 end MathlibExtTest.Probability.StableDistribution
