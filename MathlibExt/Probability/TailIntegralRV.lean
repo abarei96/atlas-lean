@@ -912,4 +912,3 @@ theorem tailIntegral_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : 
 #print axioms tailIntegral_tendsto
 
 end MathlibExt.Probability.TailIntegralRV
-
