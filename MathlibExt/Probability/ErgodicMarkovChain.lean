@@ -12,8 +12,6 @@ public import MathlibExt.Probability.KolmogorovCycleNecessity
 public import Mathlib.Data.Matrix.Mul
 public import Mathlib.LinearAlgebra.Matrix.Irreducible.Defs
 
-import all MathlibExt.Probability.KolmogorovCycleNecessity
-
 /-!
 # Ergodic finite Markov chains
 
@@ -123,15 +121,6 @@ theorem isErgodic_iff_isPrimitive (P : StochasticMatrix M) :
     exact ⟨fun i j => P.nonneg i j, n, hn, h⟩
   · rintro ⟨-, n, hn, h⟩
     exact ⟨n, hn, h⟩
-
-private theorem canonical_matPow_nonneg (P : StochasticMatrix M) :
-    ∀ (n : ℕ) (i j : Fin (M + 1)), 0 ≤ P.matPow n i j :=
-  StochasticMatrix.matPow_nonneg P
-
-/-- Every entry of every power of a stochastic matrix is nonnegative. -/
-theorem matPow_nonneg (P : StochasticMatrix M) : ∀ (n : ℕ) (i j : Fin (M + 1)),
-    0 ≤ P.matPow n i j :=
-  canonical_matPow_nonneg P
 
 /-- Every row of every power of a stochastic matrix sums to `1`: powers of a
 stochastic matrix are stochastic. -/
