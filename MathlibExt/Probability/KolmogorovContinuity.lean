@@ -21,9 +21,11 @@ public import Mathlib.Probability.Process.Kolmogorov
 
 If a real-valued process `X` on a probability space satisfies the moment
 bound `E |X_s - X_t|^β ≤ K |s - t|^{1+α}` for some `α, β > 0`, then for
-every `γ < α / β` with `γ > 0` there is a modification `Y` of `X` (i.e.
-`Y_t = X_t` almost surely for each `t`) whose sample paths are
-`γ`-Hölder continuous on the dyadic rationals of `[0, 1]`, almost surely.
+every `γ < α / β` with `γ > 0` the original process `X` has a common
+almost-sure `γ`-Hölder bound on the dyadic rationals of `[0, 1]`. The
+original modification statement is retained as a corollary, choosing `Y = X`.
+The canonical `ProbabilityTheory.IsKolmogorovProcess` adapter derives the
+moment hypotheses from its measurable-pair and lintegral fields.
 
 ## Source
 
@@ -736,9 +738,125 @@ private lemma goodSet_ae {μ : Measure Ω} [IsProbabilityMeasure μ]
 
 /-! ### Main theorem -/
 
-/-- **Kolmogorov continuity theorem.** See the module docstring for the
-statement, the correction to the v1 statement (the integrability
-hypothesis `hX_int`), and the proof outline. -/
+/-- A single full-measure set carries a Hölder bound for the original process
+on the dyadic rationals of `[0, 1]`. The moment-integrability correction in
+the module docstring is required for this Bochner formulation. -/
+theorem kolmogorov_ae_holder_on_dyadics {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
+    [IsProbabilityMeasure μ] {X : ℝ → Ω → ℝ} {α β K : ℝ} (_hα : 0 < α) (hβ : 0 < β)
+    (hK : 0 ≤ K)
+    (hX_int : ∀ s t : ℝ, Integrable (fun ω => |X s ω - X t ω| ^ β) μ)
+    (hkolm : ∀ s t : ℝ, ∫ ω, |X s ω - X t ω| ^ β ∂μ ≤ K * |s - t| ^ (1 + α)) :
+    ∀ γ : ℝ, γ < α / β → γ > 0 →
+      ∀ᵐ ω ∂μ, ∃ C : ℝ, 0 < C ∧
+        ∀ q r : ℝ, q ∈ dyadicRationals ∩ Set.Icc 0 1 →
+          r ∈ dyadicRationals ∩ Set.Icc 0 1 →
+          |X q ω - X r ω| ≤ C * |q - r| ^ γ := by
+  intro γ hγα hγ0
+  have hδ : 0 < α - γ * β := by
+    have h : γ * β < α := by
+      rw [lt_div_iff₀ hβ] at hγα
+      linarith [hγα]
+    linarith
+  have hgood := goodSet_ae hβ hγ0 hK hδ hX_int hkolm
+  filter_upwards [hgood] with ω hω
+  obtain ⟨M, hM⟩ := hω
+  -- The constant `D` dominates every dyadic increment, coercing the
+  -- finitely many coarse increments by their sum.
+  set D := (1 + ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
+    |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|)
+    * (2 : ℝ) ^ ((M : ℝ) * γ) with hDdef
+  have hD1 : 1 ≤ D := by
+    rw [hDdef]
+    have h1 : (1:ℝ) ≤ 1 + ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
+        |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω| := by
+      have : 0 ≤ ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
+          |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω| := by
+        apply Finset.sum_nonneg
+        intro m _
+        exact Finset.sum_nonneg (fun k _ => abs_nonneg _)
+      linarith
+    have h2 : (1:ℝ) ≤ (2 : ℝ) ^ ((M : ℝ) * γ) :=
+      Real.one_le_rpow (by norm_num) (by positivity)
+    calc (1:ℝ) = 1 * 1 := by ring
+      _ ≤ _ := mul_le_mul h1 h2 (by norm_num) (by linarith)
+  have hDpos : 0 < D := by linarith
+  have hinc : ∀ m : ℕ, ∀ k : ℕ, k < 2 ^ m →
+      |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
+        ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
+    intro m k hk
+    by_cases hmM : M ≤ m
+    · calc |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
+          ≤ (2 : ℝ) ^ (-(m : ℝ) * γ) := hM m hmM k hk
+        _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
+            have : (0:ℝ) ≤ (2 : ℝ) ^ (-(m : ℝ) * γ) :=
+              (Real.rpow_pos_of_pos (by norm_num) _).le
+            calc (2 : ℝ) ^ (-(m : ℝ) * γ) = 1 * (2 : ℝ) ^ (-(m : ℝ) * γ) := by ring
+              _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) :=
+                  mul_le_mul_of_nonneg_right hD1 this
+    · have hmM' : m < M := Nat.lt_of_not_le hmM
+      have hterm : |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
+          ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+            |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
+        have h1 := Finset.single_le_sum (f := fun m' => ∑ k' ∈ Finset.range (2 ^ m'),
+            |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|)
+          (s := Finset.range M)
+          (fun m' _ => Finset.sum_nonneg (fun k' _ => abs_nonneg _))
+          (Finset.mem_range.mpr hmM')
+        have h2 : |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
+            ≤ ∑ k' ∈ Finset.range (2 ^ m),
+              |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k' : ℝ) / (2 : ℝ) ^ m) ω| :=
+          Finset.single_le_sum (f := fun (k' : ℕ) =>
+            |X (((k' : ℝ) + 1) / (2 : ℝ) ^ m) ω - X ((k' : ℝ) / (2 : ℝ) ^ m) ω|)
+            (s := Finset.range (2 ^ m)) (a := k)
+            (fun k' _ => abs_nonneg _) (Finset.mem_range.mpr hk)
+        linarith
+      have hfactor : (1:ℝ) ≤ (2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
+        have : (2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ)
+            = (2 : ℝ) ^ (((M : ℝ) - (m : ℝ)) * γ) := by
+          rw [← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
+          congr 1; ring
+        rw [this]
+        exact Real.one_le_rpow (by norm_num) (mul_nonneg
+          (by
+            have h : (m : ℝ) ≤ (M : ℝ) := by exact_mod_cast hmM'.le
+            linarith) hγ0.le)
+      calc |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
+          ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+            |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := hterm
+        _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
+            rw [hDdef]
+            have hnn : 0 ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+                |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
+              have : 0 ≤ ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+                  |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
+                apply Finset.sum_nonneg
+                intro m' _
+                exact Finset.sum_nonneg (fun k' _ => abs_nonneg _)
+              linarith
+            calc 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+                  |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|
+                = (1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+                  |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|) * 1 := by
+                  ring
+              _ ≤ (1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
+                  |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|)
+                  * ((2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ)) :=
+                  mul_le_mul_of_nonneg_left hfactor hnn
+              _ = _ := by ring
+  refine ⟨D * (4 + 2 * (2 : ℝ) ^ (-γ) / (1 - (2 : ℝ) ^ (-γ))), ?_, ?_⟩
+  · have hρ1 : (2 : ℝ) ^ (-γ) < 1 :=
+      Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+    have h2 : 0 < 2 * (2 : ℝ) ^ (-γ) / (1 - (2 : ℝ) ^ (-γ)) := by
+      apply div_pos _ (by linarith)
+      have : 0 < (2 : ℝ) ^ (-γ) := Real.rpow_pos_of_pos (by norm_num) _
+      linarith
+    exact mul_pos hDpos (by linarith [h2])
+  · intro q r hq hr
+    exact dyadic_holder_of_increment_bound (f := fun t => X t ω) hγ0 hDpos hinc hq hr
+
+/-- **Kolmogorov continuity theorem**, in the original modification formulation.
+The direct dyadic bound permits choosing `Y = X`. See the module docstring for
+the necessary moment-integrability correction to the archived v1 statement. -/
 theorem kolmogorov_continuity_theorem {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
     [IsProbabilityMeasure μ] {X : ℝ → Ω → ℝ} {α β K : ℝ} (_hα : 0 < α) (hβ : 0 < β)
     (hK : 0 ≤ K)
@@ -752,112 +870,69 @@ theorem kolmogorov_continuity_theorem {Ω : Type*} [MeasurableSpace Ω] {μ : Me
             r ∈ dyadicRationals ∩ Set.Icc 0 1 →
             |Y q ω - Y r ω| ≤ C * |q - r| ^ γ) := by
   intro γ hγα hγ0
-  have hδ : 0 < α - γ * β := by
-    have h : γ * β < α := by
-      rw [lt_div_iff₀ hβ] at hγα
-      linarith [hγα]
-    linarith
-  have hgood := goodSet_ae hβ hγ0 hK hδ hX_int hkolm
-  refine ⟨fun t ω => Set.indicator (goodSet X γ) (X t) ω, ?_, ?_⟩
-  · intro t
-    filter_upwards [hgood] with ω hω
-    simp [Set.indicator_of_mem hω]
-  · filter_upwards [hgood] with ω hω
-    have hωmem : ω ∈ goodSet X γ := hω
-    obtain ⟨M, hM⟩ := hω
-    -- The constant `D` dominates every dyadic increment, coercing the
-    -- finitely many coarse increments by their sum.
-    set D := (1 + ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
-      |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|)
-      * (2 : ℝ) ^ ((M : ℝ) * γ) with hDdef
-    have hD1 : 1 ≤ D := by
-      rw [hDdef]
-      have h1 : (1:ℝ) ≤ 1 + ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
-          |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω| := by
-        have : 0 ≤ ∑ m ∈ Finset.range M, ∑ k ∈ Finset.range (2 ^ m),
-            |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω| := by
-          apply Finset.sum_nonneg
-          intro m _
-          exact Finset.sum_nonneg (fun k _ => abs_nonneg _)
-        linarith
-      have h2 : (1:ℝ) ≤ (2 : ℝ) ^ ((M : ℝ) * γ) :=
-        Real.one_le_rpow (by norm_num) (by positivity)
-      calc (1:ℝ) = 1 * 1 := by ring
-        _ ≤ _ := mul_le_mul h1 h2 (by norm_num) (by linarith)
-    have hDpos : 0 < D := by linarith
-    have hinc : ∀ m : ℕ, ∀ k : ℕ, k < 2 ^ m →
-        |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
-          ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
-      intro m k hk
-      by_cases hmM : M ≤ m
-      · calc |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
-            ≤ (2 : ℝ) ^ (-(m : ℝ) * γ) := hM m hmM k hk
-          _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
-              have : (0:ℝ) ≤ (2 : ℝ) ^ (-(m : ℝ) * γ) :=
-                (Real.rpow_pos_of_pos (by norm_num) _).le
-              calc (2 : ℝ) ^ (-(m : ℝ) * γ) = 1 * (2 : ℝ) ^ (-(m : ℝ) * γ) := by ring
-                _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) :=
-                    mul_le_mul_of_nonneg_right hD1 this
-      · have hmM' : m < M := Nat.lt_of_not_le hmM
-        have hterm : |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
-            ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-              |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
-          have h1 := Finset.single_le_sum (f := fun m' => ∑ k' ∈ Finset.range (2 ^ m'),
-              |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|)
-            (s := Finset.range M)
-            (fun m' _ => Finset.sum_nonneg (fun k' _ => abs_nonneg _))
-            (Finset.mem_range.mpr hmM')
-          have h2 : |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
-              ≤ ∑ k' ∈ Finset.range (2 ^ m),
-                |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k' : ℝ) / (2 : ℝ) ^ m) ω| :=
-            Finset.single_le_sum (f := fun (k' : ℕ) =>
-              |X (((k' : ℝ) + 1) / (2 : ℝ) ^ m) ω - X ((k' : ℝ) / (2 : ℝ) ^ m) ω|)
-              (s := Finset.range (2 ^ m)) (a := k)
-              (fun k' _ => abs_nonneg _) (Finset.mem_range.mpr hk)
-          linarith
-        have hfactor : (1:ℝ) ≤ (2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
-          have : (2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ)
-              = (2 : ℝ) ^ (((M : ℝ) - (m : ℝ)) * γ) := by
-            rw [← Real.rpow_add (by norm_num : (0:ℝ) < 2)]
-            congr 1; ring
-          rw [this]
-          exact Real.one_le_rpow (by norm_num) (mul_nonneg
-            (by
-              have h : (m : ℝ) ≤ (M : ℝ) := by exact_mod_cast hmM'.le
-              linarith) hγ0.le)
-        calc |X ((k + 1 : ℝ) / (2 : ℝ) ^ m) ω - X ((k : ℝ) / (2 : ℝ) ^ m) ω|
-            ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-              |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := hterm
-          _ ≤ D * (2 : ℝ) ^ (-(m : ℝ) * γ) := by
-              rw [hDdef]
-              have hnn : 0 ≤ 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-                  |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
-                have : 0 ≤ ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-                    |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω| := by
-                  apply Finset.sum_nonneg
-                  intro m' _
-                  exact Finset.sum_nonneg (fun k' _ => abs_nonneg _)
-                linarith
-              calc 1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-                    |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|
-                  = (1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-                    |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|) * 1 := by
-                    ring
-                _ ≤ (1 + ∑ m' ∈ Finset.range M, ∑ k' ∈ Finset.range (2 ^ m'),
-                    |X ((k' + 1 : ℝ) / (2 : ℝ) ^ m') ω - X ((k' : ℝ) / (2 : ℝ) ^ m') ω|)
-                    * ((2 : ℝ) ^ ((M : ℝ) * γ) * (2 : ℝ) ^ (-(m : ℝ) * γ)) :=
-                    mul_le_mul_of_nonneg_left hfactor hnn
-                _ = _ := by ring
-    refine ⟨D * (4 + 2 * (2 : ℝ) ^ (-γ) / (1 - (2 : ℝ) ^ (-γ))), ?_, ?_⟩
-    · have hρ1 : (2 : ℝ) ^ (-γ) < 1 :=
-        Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
-      have h2 : 0 < 2 * (2 : ℝ) ^ (-γ) / (1 - (2 : ℝ) ^ (-γ)) := by
-        apply div_pos _ (by linarith)
-        have : 0 < (2 : ℝ) ^ (-γ) := Real.rpow_pos_of_pos (by norm_num) _
-        linarith
-      exact mul_pos hDpos (by linarith [h2])
-    · intro q r hq hr
-      simp only [Set.indicator_of_mem hωmem]
-      exact dyadic_holder_of_increment_bound (f := fun t => X t ω) hγ0 hDpos hinc hq hr
+  refine ⟨X, ?_, kolmogorov_ae_holder_on_dyadics _hα hβ hK hX_int hkolm γ hγα hγ0⟩
+  intro t
+  exact Filter.Eventually.of_forall (fun ω => rfl)
+
+private theorem kolmogorov_integrable_moment {Ω : Type*} [MeasurableSpace Ω]
+    {μ : Measure Ω} {X : ℝ → Ω → ℝ} {β q : ℝ} {M : NNReal}
+    (hX : ProbabilityTheory.IsKolmogorovProcess X μ β q M) (s t : ℝ) :
+    Integrable (fun ω => |X s ω - X t ω| ^ β) μ := by
+  have hfin : (∫⁻ ω, edist (X s ω) (X t ω) ^ β ∂μ) ≠ ⊤ :=
+    ne_top_of_le_ne_top
+      (ENNReal.mul_ne_top ENNReal.coe_ne_top
+        (ENNReal.rpow_ne_top_of_nonneg hX.q_pos.le (edist_ne_top s t)))
+      (hX.kolmogorovCondition s t)
+  have hint := integrable_toReal_of_lintegral_ne_top
+    (hX.measurable_edist.pow_const β).aemeasurable hfin
+  convert hint using 1
+  funext ω
+  rw [← ENNReal.toReal_rpow, edist_dist, Real.dist_eq,
+    ENNReal.toReal_ofReal (abs_nonneg _)]
+
+private theorem kolmogorov_integral_moment_le {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
+    {X : ℝ → Ω → ℝ} {β q : ℝ} {M : NNReal}
+    (hX : ProbabilityTheory.IsKolmogorovProcess X μ β q M) (s t : ℝ) :
+    ∫ ω, |X s ω - X t ω| ^ β ∂μ ≤ (M : ℝ) * |s - t| ^ q := by
+  have hi := kolmogorov_integrable_moment hX s t
+  have hn : ∀ ω, 0 ≤ |X s ω - X t ω| ^ β := fun ω => Real.rpow_nonneg (abs_nonneg _) _
+  have he : ∀ ω, ENNReal.ofReal (|X s ω - X t ω| ^ β) =
+      edist (X s ω) (X t ω) ^ β := by
+    intro ω
+    rw [edist_dist, Real.dist_eq,
+      ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hX.p_pos.le]
+  have hb : (M : ENNReal) * edist s t ^ q =
+      ENNReal.ofReal ((M : ℝ) * |s - t| ^ q) := by
+    rw [edist_dist, Real.dist_eq,
+      ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hX.q_pos.le]
+    simpa only [ENNReal.ofReal_coe_nnreal] using
+      (show ENNReal.ofReal ((M : ℝ) * |s - t| ^ q) =
+          ENNReal.ofReal (M : ℝ) * ENNReal.ofReal (|s - t| ^ q) from
+        ENNReal.ofReal_mul M.property).symm
+  have hle : ENNReal.ofReal (∫ ω, |X s ω - X t ω| ^ β ∂μ) ≤
+      ENNReal.ofReal ((M : ℝ) * |s - t| ^ q) := by
+    rw [ofReal_integral_eq_lintegral_ofReal hi (Filter.Eventually.of_forall hn)]
+    simp_rw [he]
+    rw [← hb]
+    exact hX.kolmogorovCondition s t
+  exact (ENNReal.ofReal_le_ofReal_iff (mul_nonneg M.property
+    (Real.rpow_nonneg (abs_nonneg _) _))).mp hle
+
+
+/-- The canonical Kolmogorov-process condition implies a common a.e. Hölder
+bound for `X` on the dyadics of `[0, 1]`. Its measurable-pair and finite
+lintegral fields supply the Bochner hypotheses internally, including when
+`M = 0`. No claim is made about the raw paths at every real time. -/
+theorem kolmogorov_ae_holder_on_dyadics_of_isKolmogorovProcess
+    {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} [IsProbabilityMeasure μ]
+    {X : ℝ → Ω → ℝ} {α β : ℝ} {M : NNReal} (hα : 0 < α)
+    (hX : ProbabilityTheory.IsKolmogorovProcess X μ β (1 + α) M) :
+    ∀ γ : ℝ, γ < α / β → γ > 0 →
+      ∀ᵐ ω ∂μ, ∃ C : ℝ, 0 < C ∧
+        ∀ q r : ℝ, q ∈ dyadicRationals ∩ Set.Icc 0 1 →
+          r ∈ dyadicRationals ∩ Set.Icc 0 1 →
+          |X q ω - X r ω| ≤ C * |q - r| ^ γ :=
+  kolmogorov_ae_holder_on_dyadics hα hX.p_pos M.property
+    (kolmogorov_integrable_moment hX) (kolmogorov_integral_moment_le hX)
 
 end MathlibExt.Probability.KolmogorovContinuity
