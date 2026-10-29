@@ -141,3 +141,17 @@ theorem cos_fourierCoeff_three_le (hT : (0:ℝ) < 2 * Real.pi) :
         ring
 
 end MathlibExtTest.Analysis.Fourier.C1FourierSummableTests
+
+namespace MathlibExtTest.Analysis.Fourier.C1FourierSummableTests
+
+open MeasureTheory Filter Topology
+
+/-- The decay API controls the coefficient magnitude at both positive and negative frequencies. -/
+theorem cos_tendsto_abs_mul_norm_fourierCoeffOn (hT : (0 : ℝ) < 2 * Real.pi) :
+    Filter.Tendsto (fun n : ℤ => |(n : ℝ)| *
+      ‖fourierCoeffOn hT (fun x => (Real.cos x : ℂ)) n‖)
+      Filter.cofinite (nhds 0) := by
+  have h := (cos_tendsto_mul_norm_fourierCoeffOn hT).norm
+  simpa only [norm_mul, Real.norm_eq_abs, abs_norm, norm_zero] using h
+
+end MathlibExtTest.Analysis.Fourier.C1FourierSummableTests
