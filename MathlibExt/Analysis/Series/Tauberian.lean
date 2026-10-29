@@ -70,7 +70,8 @@ private theorem exists_bound_of_tendsto_zero {b : ℕ → ℝ}
     (hb : Tendsto b atTop (𝓝 0)) :
     ∃ M : ℝ, 0 ≤ M ∧ ∀ n, |b n| ≤ M := by
   obtain ⟨N, hN⟩ := (Metric.tendsto_atTop.mp hb) 1 one_pos
-  refine ⟨1 + ∑ n ∈ Finset.range N, |b n|, by positivity, fun n => ?_⟩
+  refine ⟨1 + ∑ n ∈ Finset.range N, |b n|, by
+    exact add_nonneg zero_le_one (Finset.sum_nonneg (fun _ _ => abs_nonneg _)), fun n => ?_⟩
   by_cases hn : n < N
   · calc |b n| ≤ ∑ k ∈ Finset.range N, |b k| :=
           Finset.single_le_sum (f := fun k => |b k|) (fun i _ => abs_nonneg _) (Finset.mem_range.mpr hn)
