@@ -144,7 +144,8 @@ theorem cross_terms_gaussian_coords :
       coord j ω * coord i ω) ∂gaussPi = 0 :=
   wald_cross_terms_zero_of_bounded (T := fun _ : ℕ → ℝ => 2) (N := 2)
     coord_identDistrib coord_integrable coord_mean_zero
-    (isStoppingTime_const _ _) coord_indep_of_filtration coord_adapted
+    (isStoppingTime_const _ _) coord_indep_of_filtration
+    (fun k => coord_adapted k (k + 1) (Nat.lt_succ_self k))
     (fun _ => le_refl 2)
 
 #print axioms cross_terms_gaussian_coords
@@ -161,14 +162,11 @@ theorem total_cross_terms_canonical_assumptions
     (hT : IsStoppingTime f (fun ω => (T ω : WithTop ℕ)))
     (hXf : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (f k) μ)
     (hadapt : ∀ k, @Measurable Ω ℝ (f (k + 1)) inferInstance (X k))
-    (haesm : ∀ n, AEStronglyMeasurable
-      (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ)
     (hsumm : ∑' n, ∫⁻ ω,
       ‖(if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0)‖ₑ ∂μ ≠ ⊤) :
     ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
       X j ω * X i ω) ∂μ = 0 :=
-  wald_cross_terms_zero hX_iid hX_int hmean hT hXf
-    (fun j _ hji => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hji)) le_rfl) haesm hsumm
+  wald_cross_terms_zero hX_iid hX_int hmean hT hXf hadapt hsumm
 
 /-- The bounded total cross-term API accepts the canonical Wald assumptions
 without requiring joint independence. -/
@@ -185,7 +183,6 @@ theorem bounded_cross_terms_canonical_assumptions
     {N : ℕ} (hT_bdd : ∀ ω, T ω ≤ N) :
     ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
       X j ω * X i ω) ∂μ = 0 :=
-  wald_cross_terms_zero_of_bounded hX_iid hX_int hmean hT hXf
-    (fun j _ hji => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hji)) le_rfl) hT_bdd
+  wald_cross_terms_zero_of_bounded hX_iid hX_int hmean hT hXf hadapt hT_bdd
 
 end MathlibExtTest.Probability.WaldCrossTerms

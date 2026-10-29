@@ -28,8 +28,8 @@ The diagonal part is Wald's equation applied to the squared sequence
 `Y_i = X_i²` (batch 5's `wald_equation`, not re-proved here). This file
 ports the cross part from v1: each individual cross term
 `E[X_j · X_i · 1_{T > i}]` with `j < i` vanishes, and hence the total
-cross-term contribution vanishes whenever the usual summability and
-measurability bookkeeping holds.
+cross-term contribution vanishes under the absolute-summability hypothesis
+for the stopped cross-term series; summand measurability is derived internally.
 
 ## Source
 
@@ -57,12 +57,13 @@ private lemma) is proved inline here as an unnamed `have`, and the one
 place it relies on `measurable_of_isStoppingTime` is replaced by a
 direct argument from `IsStoppingTime.measurableSet_gt`.
 
-The new lemma `wald_cross_terms_zero_of_bounded` discharges v1's
-summability (`hsumm`) and measurability (`haesm`) hypotheses in the
-bounded-stopping-time case, where the sums are finite and the terms
-vanish past the bound. Batch 14's description notes that v1's cross-term
-lemma left these hypotheses undischarged; the bounded form is the
-usable unconditional version.
+The total-cross-term APIs use canonical one-step adaptedness. Earlier-coordinate
+measurability follows by filtration monotonicity, and v1's summand measurability
+condition (`haesm`) follows from stopping-time measurability and coordinate
+integrability. The general theorem retains only v1's absolute-summability
+condition (`hsumm`) as extra analytic bookkeeping. The bounded theorem discharges
+that remaining condition because the sums are finite and the terms vanish past
+the bound. Batch 14's description notes that v1 left this bookkeeping undischarged.
 
 ## Main results
 
@@ -73,7 +74,8 @@ usable unconditional version.
   `E[X_j · X_i · 1_{T > i}] = 0`.
 * `MathlibExt.Probability.WaldCrossTerms.wald_cross_terms_zero`:
   the total cross-term contribution `E[∑_{i<T} ∑_{j<i} X_j · X_i]`
-  vanishes under summability and measurability hypotheses.
+  vanishes under canonical one-step adaptedness and absolute summability;
+  summand measurability is derived internally.
 * `MathlibExt.Probability.WaldCrossTerms.wald_cross_terms_zero_of_bounded`:
   the same conclusion for a stopping time bounded by a constant, with
   no summability or measurability hypotheses.
@@ -126,8 +128,8 @@ theorem cross_pair_integral_zero
 
 /-- The full cross-term contribution to `E[(S_T)^2]` vanishes:
 `E[∑_{i < T} ∑_{j < i} X_j X_i] = 0` for identically distributed, mean-zero variables,
-with each `X_i` independent of the filtration at time `i`, given suitable
-measurability and summability bookkeeping. -/
+with each `X_i` independent of the filtration at time `i` and measurable at time
+`i + 1`, given absolute summability of the stopped cross-term series. -/
 theorem wald_cross_terms_zero
     {Ω : Type*} {m : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilityMeasure μ]
     {X : ℕ → Ω → ℝ}
@@ -137,13 +139,38 @@ theorem wald_cross_terms_zero
     {f : Filtration ℕ m} {T : Ω → ℕ}
     (hT : IsStoppingTime f (fun ω => (T ω : WithTop ℕ)))
     (hXf : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (f k) μ)
-    (hadapt : ∀ j k, j < k → @Measurable Ω ℝ (f k) inferInstance (X j))
-    (haesm : ∀ n, AEStronglyMeasurable
-      (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ)
+    (hadapt : ∀ k, @Measurable Ω ℝ (f (k + 1)) inferInstance (X k))
     (hsumm : ∑' n, ∫⁻ ω,
       ‖(if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0)‖ₑ ∂μ ≠ ⊤) :
     ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
       X j ω * X i ω) ∂μ = 0 := by
+  have hadapt_past : ∀ j k, j < k → @Measurable Ω ℝ (f k) inferInstance (X j) :=
+    fun j _ hjk => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hjk)) le_rfl
+  have hX_aesm : ∀ i, AEStronglyMeasurable (X i) μ :=
+    fun i => ((hX_iid i 0).integrable_iff.mpr hX_int).aestronglyMeasurable
+  have haesm : ∀ n, AEStronglyMeasurable
+      (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ := by
+    intro n
+    have hset : MeasurableSet {ω : Ω | n < T ω} := by
+      have hsetEq : {ω : Ω | n < T ω} =
+          {ω : Ω | (n : WithTop ℕ) < (T ω : WithTop ℕ)} := by
+        ext ω
+        simp
+      rw [hsetEq]
+      exact (f.le n) _ (hT.measurableSet_gt n)
+    have h_ind_eq : (fun ω => if n < T ω then
+        ∑ j ∈ Finset.range n, X j ω * X n ω else 0) =
+        Set.indicator {ω | n < T ω} (fun ω => ∑ j ∈ Finset.range n, X j ω * X n ω) := by
+      ext ω
+      simp [Set.indicator, Set.mem_ofPred_eq]
+    rw [h_ind_eq]
+    apply AEStronglyMeasurable.indicator _ hset
+    have hsum : (fun ω => ∑ j ∈ Finset.range n, X j ω * X n ω) =
+        ∑ j ∈ Finset.range n, (fun ω => X j ω * X n ω) := by
+      funext ω
+      rw [Finset.sum_apply]
+    rw [hsum]
+    exact Finset.aestronglyMeasurable_sum _ (fun j _ => (hX_aesm j).mul (hX_aesm n))
   have h_eq : (fun ω => ∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
       X j ω * X i ω) =
       (fun ω => ∑' i, if i < T ω then ∑ j ∈ Finset.range i, X j ω * X i ω else 0) := by
@@ -167,7 +194,7 @@ theorem wald_cross_terms_zero
       ext ω; split_ifs <;> simp
     rw [h_dist, integral_finsetSum]
     · apply Finset.sum_eq_zero; intro j hj
-      exact cross_pair_integral_zero hX_iid hX_int hmean hT hXf hadapt j i
+      exact cross_pair_integral_zero hX_iid hX_int hmean hT hXf hadapt_past j i
         (Finset.mem_range.mp hj)
     · intro j hj
       have hji : j < i := Finset.mem_range.mp hj
@@ -176,7 +203,7 @@ theorem wald_cross_terms_zero
       have hindep : IndepFun (X i) (X j) μ := by
         rw [IndepFun_iff_Indep]
         exact indep_of_indep_of_le_right (hXf i)
-          (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt j i hji).le_map)
+          (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt_past j i hji).le_map)
       have hprod : Integrable (fun ω => X j ω * X i ω) μ := by
         show Integrable (X j * X i) μ; exact hindep.symm.integrable_mul hj_int hi_int
       have h_eq_ind : (fun ω => if i < T ω then X j ω * X i ω else 0) =
@@ -219,10 +246,12 @@ theorem wald_cross_terms_zero_of_bounded
     {f : Filtration ℕ m} {T : Ω → ℕ}
     (hT : IsStoppingTime f (fun ω => (T ω : WithTop ℕ)))
     (hXf : ∀ k, Indep (MeasurableSpace.comap (X k) inferInstance) (f k) μ)
-    (hadapt : ∀ j k, j < k → @Measurable Ω ℝ (f k) inferInstance (X j))
+    (hadapt : ∀ k, @Measurable Ω ℝ (f (k + 1)) inferInstance (X k))
     {N : ℕ} (hT_bdd : ∀ ω, T ω ≤ N) :
     ∫ ω, (∑ i ∈ Finset.range (T ω), ∑ j ∈ Finset.range i,
       X j ω * X i ω) ∂μ = 0 := by
+  have hadapt_past : ∀ j k, j < k → @Measurable Ω ℝ (f k) inferInstance (X j) :=
+    fun j _ hjk => (hadapt j).mono (f.mono (Nat.succ_le_of_lt hjk)) le_rfl
   have hset_meas : ∀ n, MeasurableSet {ω : Ω | n < T ω} := by
     intro n
     have hsetEq : {ω : Ω | n < T ω} =
@@ -232,24 +261,12 @@ theorem wald_cross_terms_zero_of_bounded
     exact (f.le n) _ (hT.measurableSet_gt n)
   have hX_int_all : ∀ i, Integrable (X i) μ :=
     fun i => (hX_iid i 0).integrable_iff.mpr hX_int
-  have hX_aesm : ∀ i, AEStronglyMeasurable (X i) μ :=
-    fun i => (hX_int_all i).aestronglyMeasurable
   -- The `n`-th summand, written with an indicator.
   have h_ind_eq : ∀ n, (fun ω => if n < T ω then
       ∑ j ∈ Finset.range n, X j ω * X n ω else 0) =
       Set.indicator {ω | n < T ω}
         (fun ω => ∑ j ∈ Finset.range n, X j ω * X n ω) := by
     intro n; ext ω; simp [Set.indicator, Set.mem_ofPred_eq]
-  have haesm : ∀ n, AEStronglyMeasurable
-      (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ := by
-    intro n
-    rw [h_ind_eq n]
-    apply AEStronglyMeasurable.indicator _ (hset_meas n)
-    have hsum : (fun ω => ∑ j ∈ Finset.range n, X j ω * X n ω) =
-        ∑ j ∈ Finset.range n, (fun ω => X j ω * X n ω) := by
-      funext ω; rw [Finset.sum_apply]
-    rw [hsum]
-    exact Finset.aestronglyMeasurable_sum _ (fun j _ => (hX_aesm j).mul (hX_aesm n))
   have h_int_each : ∀ n, Integrable
       (fun ω => if n < T ω then ∑ j ∈ Finset.range n, X j ω * X n ω else 0) μ := by
     intro n
@@ -261,7 +278,7 @@ theorem wald_cross_terms_zero_of_bounded
     have hindep : IndepFun (X n) (X j) μ := by
       rw [IndepFun_iff_Indep]
       exact indep_of_indep_of_le_right (hXf n)
-        (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt j n hjn).le_map)
+        (MeasurableSpace.comap_le_iff_le_map.mpr (hadapt_past j n hjn).le_map)
     show Integrable (X j * X n) μ
     exact hindep.symm.integrable_mul (hX_int_all j) (hX_int_all n)
   have hsumm : ∑' n, ∫⁻ ω,
@@ -286,6 +303,6 @@ theorem wald_cross_terms_zero_of_bounded
     rw [ENNReal.sum_ne_top]
     intro n _
     exact (h_int_each n).hasFiniteIntegral.ne
-  exact wald_cross_terms_zero hX_iid hX_int hmean hT hXf hadapt haesm hsumm
+  exact wald_cross_terms_zero hX_iid hX_int hmean hT hXf hadapt hsumm
 
 end MathlibExt.Probability.WaldCrossTerms
