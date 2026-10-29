@@ -98,4 +98,36 @@ example : Matrix.IsPrimitive (StochasticMatrix.uniform 1).toMatrix :=
 #print axioms StochasticMatrix.IsErgodic.pow
 #print axioms StochasticMatrix.IsErgodic.eventually_all_matPow_pos
 
+/-- Power zero retains exactly the identity transition probabilities. -/
+theorem characterization_power_zero {M : ℕ} (P : StochasticMatrix M)
+    (i j : Fin (M + 1)) : P.matPow 0 i j = if i = j then 1 else 0 :=
+  rfl
+
+/-- The one-step transition probabilities are the original matrix entries. -/
+theorem characterization_power_one {M : ℕ} (P : StochasticMatrix M)
+    (i j : Fin (M + 1)) : P.matPow 1 i j = P.prob i j :=
+  StochasticMatrix.matPow_one P i j
+
+/-- Three steps of the two-state uniform chain still give literal probability one half. -/
+theorem characterization_uniform_three (i j : Fin 2) :
+    (StochasticMatrix.uniform 1).matPow 3 i j = (1 / 2 : ℝ) := by
+  fin_cases i <;> fin_cases j <;>
+    norm_num [StochasticMatrix.matPow, StochasticMatrix.uniform, Fin.sum_univ_two]
+
+/-- The one-state identity is ergodic, so the nonergodicity guard cannot cover M = 0. -/
+theorem characterization_identity_one_state : (StochasticMatrix.identity 0).IsErgodic := by
+  refine ⟨1, by norm_num, ?_⟩
+  intro i j
+  simp only [pow_one]
+  fin_cases i
+  fin_cases j
+  norm_num [StochasticMatrix.toMatrix, StochasticMatrix.identity]
+
+/-- Power zero of an ergodic two-state chain is not ergodic, preserving the positive-p guard. -/
+theorem characterization_uniform_power_zero :
+    ¬ ((StochasticMatrix.uniform 1).pow 0).IsErgodic := by
+  have heq : (StochasticMatrix.uniform 1).pow 0 = StochasticMatrix.identity 1 := by rfl
+  rw [heq]
+  exact StochasticMatrix.not_isErgodic_identity le_rfl
+
 end MathlibExtTest.Probability.ErgodicMarkovChain
