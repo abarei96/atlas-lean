@@ -18,11 +18,11 @@ open MathlibExt.Probability.StableDistribution
 
 namespace MathlibExtTest.Probability.StableDistribution
 
-/-- The Dirac measure at `0` is stable of index `1`. -/
+/-- The Dirac measure at `0` satisfies the degenerate index-one rescaling identity. -/
 example : IsStable (dirac (0 : ℝ)) 1 :=
   isStable_dirac 0 one_pos (by norm_num)
 
-/-- The Dirac measure at `3` is stable of index `2`. -/
+/-- The Dirac measure at `3` satisfies the degenerate index-two rescaling identity. -/
 example : IsStable (dirac (3 : ℝ)) 2 :=
   isStable_dirac 3 (by norm_num) (by norm_num)
 
@@ -35,14 +35,15 @@ example (μ : ℝ) (v : ℝ≥0) : IsStable (gaussianReal μ v) 2 :=
   isStable_gaussianReal μ v
 
 /-- The two-fold convolution power of `δ_a` is `δ_{2a}`. -/
-example (a : ℝ) : convPowStable (dirac a) 2 = dirac (2 * a) := by
-  rw [convPowStable_dirac]
+example (a : ℝ) : Measure.convPow (dirac a) 2 = dirac (2 * a) := by
+  rw [Measure.convPow_dirac]
+  simp only [nsmul_eq_mul]
   norm_num
 
 /-- The two-fold convolution power of `N(μ, v)` is `N(2μ, 2v)`. -/
 example (μ : ℝ) (v : ℝ≥0) :
-    convPowStable (gaussianReal μ v) 2 = gaussianReal (2 * μ) (2 * v) := by
-  rw [convPowStable_gaussianReal]
+    Measure.convPow (gaussianReal μ v) 2 = gaussianReal (2 * μ) (2 * v) := by
+  rw [convPow_gaussianReal]
   norm_num
 
 /-- The standard Gaussian is nondegenerate. -/
@@ -66,18 +67,22 @@ example (μ : ℝ) : ¬ IsNondegenerate (gaussianReal μ 0) := by
 example (a : ℝ) : InDomainOfAttraction (dirac a) (dirac a) :=
   inDomainOfAttraction_dirac a
 
-/-- The Dirac measure is in the domain of attraction of index `1`. -/
-example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 1 :=
-  inDomainOfAttractionIndex_dirac a one_pos (by norm_num)
+/-- The old chosen Dirac limit cannot witness index one after nondegeneracy is required. -/
+example (a : ℝ) :
+    ¬ (IsStable (dirac a) 1 ∧ IsNondegenerate (dirac a) ∧
+      InDomainOfAttraction (dirac a) (dirac a)) :=
+  fun h => not_isNondegenerate_dirac a h.2.1
 
-/-- The Dirac measure is in the domain of attraction of index `2`. -/
-example (a : ℝ) : InDomainOfAttractionIndex (dirac a) 2 :=
-  inDomainOfAttractionIndex_dirac a (by norm_num) (by norm_num)
+/-- The same old chosen witness is excluded at index two. -/
+example (a : ℝ) :
+    ¬ (IsStable (dirac a) 2 ∧ IsNondegenerate (dirac a) ∧
+      InDomainOfAttraction (dirac a) (dirac a)) :=
+  fun h => not_isNondegenerate_dirac a h.2.1
 
 /-- Independent exact n=4 convolution control for the standard Gaussian. -/
 theorem characterization_gaussian_convolution_four :
-    convPowStable (gaussianReal 0 1) 4 = gaussianReal 0 4 := by
-  rw [convPowStable_gaussianReal]
+    Measure.convPow (gaussianReal 0 1) 4 = gaussianReal 0 4 := by
+  rw [convPow_gaussianReal]
   norm_num
 
 /-- Fixed dilation four gives variance sixteen for every centering. -/
@@ -93,7 +98,7 @@ theorem characterization_gaussian_affine_four (b : ℝ) :
 
 /-- The two exact laws differ, independently of the old stability definition. -/
 theorem characterization_gaussian_four_not_affine_one (b : ℝ) :
-    convPowStable (gaussianReal 0 1) 4 ≠
+    Measure.convPow (gaussianReal 0 1) 4 ≠
       (gaussianReal 0 1).map (fun x => 4 * x + b) := by
   rw [characterization_gaussian_convolution_four, characterization_gaussian_affine_four]
   intro h
