@@ -68,7 +68,7 @@ example : circulantEigenvalue 2 shiftVec 0 = 1 := by
 
 /-- The `j = 1` Fourier eigenvalue of the shift circulant is `-1`. -/
 example : circulantEigenvalue 2 shiftVec 1 = -1 := by
-  show (∑ k, shiftVec k * zeta 2 ^ (-(k.val * (1 : ZMod 2).val : ℤ))) = -1
+  rw [circulantEigenvalue_apply]
   rw [sum_zmod_two]
   have hval : (1 : ZMod 2).val = 1 := rfl
   rw [hval, shiftVec_zero, shiftVec_one]
@@ -80,7 +80,7 @@ example : (Matrix.circulant shiftVec).det = -1 := by
   have h0 : circulantEigenvalue 2 shiftVec 0 = 1 := by
     rw [circulantEigenvalue_zero, sum_zmod_two, shiftVec_zero, shiftVec_one, zero_add]
   have h1 : circulantEigenvalue 2 shiftVec 1 = -1 := by
-    show (∑ k, shiftVec k * zeta 2 ^ (-(k.val * (1 : ZMod 2).val : ℤ))) = -1
+    rw [circulantEigenvalue_apply]
     rw [sum_zmod_two]
     have hval : (1 : ZMod 2).val = 1 := rfl
     rw [hval, shiftVec_zero, shiftVec_one]
@@ -111,11 +111,44 @@ example (v : ZMod 1 → ℂ) : circulantEigenvalue 1 v 0 = v 0 := by
 /-- The size-one Fourier matrix is the identity. -/
 example : fourierMatrix 1 = (1 : Matrix (ZMod 1) (ZMod 1) ℂ) := by
   ext i j
-  simp [fourierMatrix, zeta, Matrix.one_apply, Subsingleton.elim i j]
+  simp [fourierMatrix, fourierVec, Matrix.one_apply, Subsingleton.elim i 0,
+    Subsingleton.elim j 0]
 
 /-- The size-one inverse Fourier matrix is also the identity. -/
 example : fourierMatrixInv 1 = (1 : Matrix (ZMod 1) (ZMod 1) ℂ) := by
   ext i j
-  simp [fourierMatrixInv, zeta, Matrix.one_apply, Subsingleton.elim i j]
+  simp [fourierMatrixInv, Matrix.one_apply, Subsingleton.elim i 0, Subsingleton.elim j 0]
+
+variable {n : ℕ} [NeZero n]
+
+-- A client can pass the eigenvalues directly to the canonical linear-equivalence inverse.
+example (v : ZMod n → ℂ) :
+    ZMod.dft.symm (circulantEigenvalue n v) = v := by
+  change ZMod.dft.symm (ZMod.dft v) = v
+  exact ZMod.dft.symm_apply_apply v
+
+-- The spectral transform has the canonical DFT interface definitionally.
+example (v : ZMod n → ℂ) : circulantEigenvalue n v = ZMod.dft v := by rfl
+
+-- Fourier vectors carry the canonical character, with the positive sign.
+example (j i : ZMod n) : fourierVec n j i = ZMod.stdAddChar (i * j) := by rfl
+
+-- Fourier matrix multiplication is the canonical inverse DFT up to n.
+example (v : ZMod n → ℂ) :
+    Matrix.mulVec (fourierMatrix n) v = (n : ℂ) • ZMod.dft.symm v := by
+  exact fourierMatrix_mulVec_eq_invDFT v
+
+example (v : ZMod n → ℂ) :
+    Matrix.mulVec (fourierMatrixInv n) v = (n : ℂ)⁻¹ • ZMod.dft v := by
+  exact fourierMatrixInv_mulVec_eq_dft v
+
+/-- At the last frequency of `ZMod 3`, a shift has the negative-character eigenvalue. -/
+example : circulantEigenvalue 3 (Pi.single 1 (1 : ℂ)) 2 =
+    ZMod.stdAddChar (-(2 : ZMod 3)) := by
+  simp [circulantEigenvalue, ZMod.dft_apply, Pi.single_apply]
+
+/-- The zero input has zero Fourier eigenvalues at every frequency. -/
+example (j : ZMod n) : circulantEigenvalue n (0 : ZMod n → ℂ) j = 0 := by
+  exact congrFun (ZMod.dft.map_zero) j
 
 end MathlibExt.LinearAlgebra.Matrix.CirculantSpectrumTest
