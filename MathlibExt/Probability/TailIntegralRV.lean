@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
+public import MathlibExt.Probability.RegularVariation
 public import Mathlib.MeasureTheory.Measure.Typeclasses.Probability
 public import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 public import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
@@ -41,11 +42,23 @@ whereas v1's constant `p * α * c ^ (1 - α) / (1 - α)` is negative when
 `α > 1`. For `α = 1` the ratio diverges logarithmically. This batch ports
 the corrected statement for `0 < α < 1`.
 
-The proof goes through Potter's bound and Karamata's integral theorem for
-antitone tails (private helpers, following the argument of batch 74's
-unmerged `potter_upper` / `karamata_integral`, restated here for the
-first-moment case), a layer-cake identity for the first moment, and the
-tail-balance ratio limit.
+The module uses the canonical `RegularVariation` predicates, strict left/right
+and combined tails, and guarded tail balance. The strict left tail is
+`μ(Iio(-x))`, so at nonnegative thresholds the combined tail is the real strict
+absolute-tail mass. The earlier inclusive `Iic(-x)` representation counted
+boundary atoms and is corrected here.
+
+The proof uses eventual positivity in Potter's bound and Karamata's integral
+theorem for antitone tails, the pinned Mathlib layer-cake API for the restricted
+first moment, and tail balance. No global first moment or no-atoms assumption is
+needed. The private analytic estimates originate in the earlier first-moment
+port and its adapted dyadic Karamata argument.
+
+The old globally-positive slow-factor predicate differs from canonical eventual
+positivity for a fixed factor. The existential regular-variation predicates can
+still be equivalent by patching early factor values. This API/representation
+repair does not claim strict generality of the main theorem from that factor
+example; tail endpoint and zero-denominator corrections are recorded separately.
 -/
 
 @[expose] public section
@@ -55,80 +68,11 @@ open scoped Topology ENNReal NNReal
 
 namespace MathlibExt.Probability.TailIntegralRV
 
-/-- `L : ℝ → ℝ` is *slowly varying* (at infinity) if it is positive on `(0, ∞)` and
-`L(cx) / L(x) → 1` as `x → ∞` for every `c > 0`. Verbatim from v1. -/
-def IsSlowlyVarying (L : ℝ → ℝ) : Prop :=
-  (∀ x, 0 < x → 0 < L x) ∧
-  ∀ c : ℝ, 0 < c → Tendsto (fun x => L (c * x) / L x) atTop (𝓝 1)
+open MathlibExt.Probability.RegularVariation
 
-/-- `f` is *regularly varying* with index `ρ` if it can be written as `f x = x^ρ · L x`
-eventually as `x → ∞`, where `L` is slowly varying. Verbatim from v1. -/
-def IsRegularlyVarying (f : ℝ → ℝ) (ρ : ℝ) : Prop :=
-  ∃ L : ℝ → ℝ, IsSlowlyVarying L ∧ ∀ᶠ x in atTop, f x = x ^ ρ * L x
-
-/-- The right tail probability `μ((x, ∞))` as a real number. Verbatim from v1. -/
-def rightTail (μ : Measure ℝ) (x : ℝ) : ℝ := (μ (Set.Ioi x)).toReal
-
-/-- The left tail probability `μ((-∞, -x])` as a real number. Verbatim from v1. -/
-def leftTail (μ : Measure ℝ) (x : ℝ) : ℝ := (μ (Set.Iic (-x))).toReal
-
-/-- The two-sided tail `μ(|X| > x)` written as the sum of the right and left tails.
-Verbatim from v1. -/
-def combinedTail (μ : Measure ℝ) (x : ℝ) : ℝ := rightTail μ x + leftTail μ x
-
-/-- `μ` has *tail balance* with parameter `p ∈ [0, 1]` if the ratio of the right
-tail to the combined two-sided tail tends to `p` as `x → ∞`. Verbatim from v1. -/
-def HasTailBalance (μ : Measure ℝ) (p : ℝ) : Prop :=
-  0 ≤ p ∧ p ≤ 1 ∧
-  Tendsto (fun x => rightTail μ x / combinedTail μ x) atTop (𝓝 p)
-
-theorem rightTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ rightTail μ x :=
-  ENNReal.toReal_nonneg
-
-theorem leftTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ leftTail μ x :=
-  ENNReal.toReal_nonneg
-
-theorem combinedTail_nonneg (μ : Measure ℝ) (x : ℝ) : 0 ≤ combinedTail μ x :=
-  add_nonneg (rightTail_nonneg μ x) (leftTail_nonneg μ x)
-
-theorem rightTail_le_one (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    rightTail μ x ≤ 1 := by
-  show (μ (Set.Ioi x)).toReal ≤ 1
-  rw [← ENNReal.toReal_one]
-  exact ENNReal.toReal_mono ENNReal.one_ne_top prob_le_one
-
-theorem leftTail_le_one (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    leftTail μ x ≤ 1 := by
-  show (μ (Set.Iic (-x))).toReal ≤ 1
-  rw [← ENNReal.toReal_one]
-  exact ENNReal.toReal_mono ENNReal.one_ne_top prob_le_one
-
-theorem combinedTail_le_two (μ : Measure ℝ) [IsProbabilityMeasure μ] (x : ℝ) :
-    combinedTail μ x ≤ 2 := by
-  show rightTail μ x + leftTail μ x ≤ 2
-  linarith [rightTail_le_one μ x, leftTail_le_one μ x]
-
-theorem antitone_rightTail (μ : Measure ℝ) [IsFiniteMeasure μ] :
-    Antitone (rightTail μ) := by
-  intro a b hab
-  show (μ (Set.Ioi b)).toReal ≤ (μ (Set.Ioi a)).toReal
-  exact ENNReal.toReal_mono (measure_ne_top _ _) (measure_mono (Set.Ioi_subset_Ioi hab))
-
-theorem antitone_leftTail (μ : Measure ℝ) [IsFiniteMeasure μ] :
-    Antitone (leftTail μ) := by
-  intro a b hab
-  show (μ (Set.Iic (-b))).toReal ≤ (μ (Set.Iic (-a))).toReal
-  exact ENNReal.toReal_mono (measure_ne_top _ _)
-    (measure_mono (Set.Iic_subset_Iic.mpr (neg_le_neg hab)))
-
-theorem antitone_combinedTail (μ : Measure ℝ) [IsFiniteMeasure μ] :
-    Antitone (combinedTail μ) := by
-  intro a b hab
-  show rightTail μ b + leftTail μ b ≤ rightTail μ a + leftTail μ a
-  exact add_le_add (antitone_rightTail μ hab) (antitone_leftTail μ hab)
-
-/-- A regularly varying function has the expected ratio limit. -/
-theorem IsRegularlyVarying.ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
+/-- Ratio form of the canonical regular-variation predicate. Positivity is only
+needed eventually, as in the canonical definition. -/
+private theorem rv_ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
     (hT : IsRegularlyVarying T ρ) {c : ℝ} (hc : 0 < c) :
     Tendsto (fun x => T (c * x) / T x) atTop (𝓝 (c ^ ρ)) := by
   obtain ⟨L, hL, hEv⟩ := hT
@@ -137,24 +81,15 @@ theorem IsRegularlyVarying.ratio_tendsto {T : ℝ → ℝ} {ρ : ℝ}
   have hEv2 : ∀ᶠ x in atTop, T (c * x) = (c * x) ^ ρ * L (c * x) :=
     hmul.eventually hEv
   have hEq : ∀ᶠ x in atTop, T (c * x) / T x = c ^ ρ * (L (c * x) / L x) := by
-    filter_upwards [hEv, hEv2, eventually_gt_atTop (0 : ℝ)] with x hx hx2 hxpos
-    have hLx : L x ≠ 0 := ne_of_gt (hL.1 x hxpos)
+    filter_upwards [hEv, hEv2, hL.1, eventually_gt_atTop (0 : ℝ)]
+      with x hx hx2 hLpos hxpos
+    have hLx : L x ≠ 0 := ne_of_gt hLpos
     have hxr : x ^ ρ ≠ 0 := ne_of_gt (Real.rpow_pos_of_pos hxpos ρ)
     rw [hx, hx2, Real.mul_rpow hc.le hxpos.le]
     field_simp
-  have hEq' : (fun x => T (c * x) / T x) =ᶠ[atTop]
-      (fun x => c ^ ρ * (L (c * x) / L x)) := hEq
-  refine Filter.Tendsto.congr' hEq'.symm ?_
+  refine Filter.Tendsto.congr' (Filter.EventuallyEq.symm hEq) ?_
   have h := (hL.2 c hc).const_mul (c ^ ρ)
   simpa using h
-
-/-- A regularly varying function is eventually positive. -/
-theorem IsRegularlyVarying.eventually_pos {T : ℝ → ℝ} {ρ : ℝ}
-    (hT : IsRegularlyVarying T ρ) : ∀ᶠ x in atTop, 0 < T x := by
-  obtain ⟨L, hL, hEv⟩ := hT
-  filter_upwards [hEv, eventually_gt_atTop (0 : ℝ)] with x hx hxpos
-  rw [hx]
-  exact mul_pos (Real.rpow_pos_of_pos hxpos ρ) (hL.1 x hxpos)
 
 /-- **Potter's lower bound** for antitone functions with a ratio limit: for every
 `δ > 0` there are `D > 0` and `Y` such that `D * x ^ (ρ - δ) ≤ W x` for all
@@ -640,9 +575,9 @@ theorem tailIntegral_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : 
     (hRV : IsRegularlyVarying (combinedTail μ) (-α)) {c : ℝ} (hc : 0 < c) :
     Tendsto (fun x => (∫ y in Set.Ioc 0 (c * x), y ∂μ) / (x * combinedTail μ x))
       atTop (𝓝 (p * α * c ^ (1 - α) / (1 - α))) := by
-  obtain ⟨hp0, hp1, hbal⟩ := hTB
-  have hCanti : Antitone (combinedTail μ) := antitone_combinedTail μ
-  have hRanti : Antitone (rightTail μ) := antitone_rightTail μ
+  obtain ⟨hp0, hp1, hTBpos, hbal⟩ := hTB
+  have hCanti : Antitone (combinedTail μ) := combinedTail_antitone μ
+  have hRanti : Antitone (rightTail μ) := rightTail_antitone μ
   have hCnn : ∀ t, 0 ≤ combinedTail μ t := fun t => combinedTail_nonneg μ t
   have hRnn : ∀ t, 0 ≤ rightTail μ t := fun t => rightTail_nonneg μ t
   have hCbdd : ∃ B, ∀ t, combinedTail μ t ≤ B := ⟨2, fun t => combinedTail_le_two μ t⟩
@@ -650,7 +585,7 @@ theorem tailIntegral_tendsto {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : 
   have hCpos : ∀ᶠ x in atTop, 0 < combinedTail μ x := hRV.eventually_pos
   have hCratio : ∀ d : ℝ, 0 < d →
       Tendsto (fun x => combinedTail μ (d * x) / combinedTail μ x)
-        atTop (𝓝 (d ^ (-α))) := fun d hd => hRV.ratio_tendsto hd
+        atTop (𝓝 (d ^ (-α))) := fun d hd => rv_ratio_tendsto hRV hd
   have hCInt : ∀ a b : ℝ, a ≤ b → IntervalIntegrable (combinedTail μ) volume a b :=
     fun a b hab => intervalIntegrable_of_antitone_bdd hCanti hCnn hCbdd hab
   have hRInt : ∀ a b : ℝ, a ≤ b → IntervalIntegrable (rightTail μ) volume a b :=

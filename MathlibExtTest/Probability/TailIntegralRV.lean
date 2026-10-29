@@ -42,6 +42,7 @@ open scoped Topology ENNReal NNReal
 namespace MathlibExtTest.TailIntegralRV
 
 open MathlibExt.Probability.TailIntegralRV
+open MathlibExt.Probability.RegularVariation
 
 /-- Pareto density (real-valued): `α * x ^ (-α - 1)` on `[1, ∞)`, `0` elsewhere. -/
 noncomputable def paretoDensityReal (α : ℝ) (x : ℝ) : ℝ :=
@@ -148,6 +149,28 @@ theorem pareto_prob {α : ℝ} (hα : 0 < α) :
     integral_Ioi_paretoDensity hα (show (1:ℝ) ≤ 1 by norm_num)]
   simp [Real.one_rpow]
 
+/-- Nonpositive Pareto parameters give zero density after `ofReal`. -/
+theorem paretoMeasure_eq_zero_of_nonpos {α : ℝ} (hα : α ≤ 0) :
+    paretoMeasure α = 0 := by
+  have hzero : (fun x => ENNReal.ofReal (paretoDensityReal α x)) = fun _ => 0 := by
+    funext x
+    unfold paretoDensityReal
+    split_ifs with hx
+    · apply ENNReal.ofReal_eq_zero.mpr
+      exact mul_nonpos_of_nonpos_of_nonneg hα (Real.rpow_nonneg (by linarith) _)
+    · simp
+  unfold paretoMeasure
+  rw [hzero]
+  simp
+
+/-- Every real-parameter Pareto measure is finite; positive parameters have mass one. -/
+instance paretoMeasure_isFinite (α : ℝ) : IsFiniteMeasure (paretoMeasure α) := by
+  by_cases hα : 0 < α
+  · have : IsProbabilityMeasure (paretoMeasure α) := ⟨pareto_prob hα⟩
+    infer_instance
+  · rw [paretoMeasure_eq_zero_of_nonpos (le_of_not_gt hα)]
+    infer_instance
+
 theorem pareto_rightTail {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
     rightTail (paretoMeasure α) x = x ^ (-α) := by
   unfold rightTail
@@ -171,17 +194,17 @@ theorem pareto_rightTail {α : ℝ} (hα : 0 < α) {x : ℝ} (hx : 1 ≤ x) :
 theorem pareto_leftTail_zero {α : ℝ} {x : ℝ} (hx : 1 ≤ x) :
     leftTail (paretoMeasure α) x = 0 := by
   unfold leftTail
-  have h : (paretoMeasure α) (Set.Iic (-x)) = 0 := by
+  have h : (paretoMeasure α) (Set.Iio (-x)) = 0 := by
     unfold paretoMeasure
-    rw [withDensity_apply _ measurableSet_Iic]
+    rw [withDensity_apply _ measurableSet_Iio]
     have hEq : Set.EqOn (fun y => ENNReal.ofReal (paretoDensityReal α y)) (fun _ => 0)
-        (Set.Iic (-x)) := by
+        (Set.Iio (-x)) := by
       intro y hy
-      simp only [Set.mem_Iic] at hy
+      simp only [Set.mem_Iio] at hy
       show ENNReal.ofReal (paretoDensityReal α y) = 0
       rw [paretoDensityReal_eq_zero (by linarith : y < 1)]
       simp
-    rw [setLIntegral_congr_fun measurableSet_Iic hEq]
+    rw [setLIntegral_congr_fun measurableSet_Iio hEq]
     exact lintegral_zero
   rw [h]
   simp
@@ -218,21 +241,23 @@ theorem pareto_rightTail_of_lt_one {α : ℝ} (hα : 0 < α) {t : ℝ} (ht : t <
 /-- The Pareto measure has tail balance `p = 1`. -/
 theorem pareto_tailBalance {α : ℝ} (hα : 0 < α) :
     HasTailBalance (paretoMeasure α) 1 := by
-  refine ⟨by norm_num, by norm_num, ?_⟩
-  have hEv : (fun x => rightTail (paretoMeasure α) x / combinedTail (paretoMeasure α) x)
-      =ᶠ[atTop] fun _ => (1:ℝ) := by
-    filter_upwards [eventually_ge_atTop (1:ℝ)] with x hx
-    rw [pareto_rightTail hα hx, pareto_combinedTail hα hx]
-    exact div_self (ne_of_gt (Real.rpow_pos_of_pos (by linarith) _))
-  exact Filter.Tendsto.congr' hEv.symm tendsto_const_nhds
+  refine ⟨by norm_num, by norm_num, ?_, ?_⟩
+  · filter_upwards [eventually_ge_atTop (1 : ℝ)] with x hx
+    rw [pareto_combinedTail hα hx]
+    exact Real.rpow_pos_of_pos (by linarith) _
+  · have hEv : (fun x => rightTail (paretoMeasure α) x / combinedTail (paretoMeasure α) x)
+        =ᶠ[atTop] fun _ => (1:ℝ) := by
+      filter_upwards [eventually_ge_atTop (1:ℝ)] with x hx
+      rw [pareto_rightTail hα hx, pareto_combinedTail hα hx]
+      exact div_self (ne_of_gt (Real.rpow_pos_of_pos (by linarith) _))
+    exact Filter.Tendsto.congr' hEv.symm tendsto_const_nhds
 
 /-- The Pareto combined tail is regularly varying of index `-α`. -/
 theorem pareto_regularlyVarying {α : ℝ} (hα : 0 < α) :
     IsRegularlyVarying (combinedTail (paretoMeasure α)) (-α) := by
-  refine ⟨fun _ => 1, ⟨fun x _ => one_pos, fun c _ => ?_⟩, ?_⟩
-  · simp
-  · filter_upwards [eventually_ge_atTop (1:ℝ)] with x hx
-    rw [pareto_combinedTail hα hx, mul_one]
+  refine ⟨fun _ => 1, isSlowlyVarying_one, ?_⟩
+  filter_upwards [eventually_ge_atTop (1:ℝ)] with x hx
+  rw [pareto_combinedTail hα hx, mul_one]
 
 /-- The main theorem applied to the Pareto law with `α = 1 / 2`, `c = 4`:
 the limit is `2`. -/
@@ -296,7 +321,7 @@ theorem pareto_tailIntegral_diverges {c : ℝ} (hc : 0 < c) :
           - rightTail (paretoMeasure (3 / 2 : ℝ)) (c * x)) volume a b := by
       intro a b hab
       exact (intervalIntegrable_of_antitone_bdd
-        (antitone_rightTail (paretoMeasure (3 / 2 : ℝ)))
+        (rightTail_antitone (paretoMeasure (3 / 2 : ℝ)))
         (fun t => rightTail_nonneg _ t)
         ⟨1, fun t => rightTail_le_one _ t⟩ hab).sub intervalIntegrable_const
     have hsplit : (∫ t in (0:ℝ)..(c * x),
@@ -317,7 +342,7 @@ theorem pareto_tailIntegral_diverges {c : ℝ} (hc : 0 < c) :
       intro t ht
       have hle : rightTail (paretoMeasure (3 / 2 : ℝ)) (c * x)
           ≤ rightTail (paretoMeasure (3 / 2 : ℝ)) t :=
-        antitone_rightTail _ ht.2
+        rightTail_antitone _ ht.2
       linarith
     have hcongr : (∫ t in (0:ℝ)..(1 / 2),
           (rightTail (paretoMeasure (3 / 2 : ℝ)) t
@@ -336,7 +361,7 @@ theorem pareto_tailIntegral_diverges {c : ℝ} (hc : 0 < c) :
     rw [hsplit, hcongr]
     have hRcx : rightTail (paretoMeasure (3 / 2 : ℝ)) (c * x)
         ≤ rightTail (paretoMeasure (3 / 2 : ℝ)) 2 :=
-      antitone_rightTail _ hcx
+      rightTail_antitone _ hcx
     have h1m : m ≤ (1:ℝ) - rightTail (paretoMeasure (3 / 2 : ℝ)) (c * x) := by
       rw [hmdef]
       linarith [hRcx, hR2]
