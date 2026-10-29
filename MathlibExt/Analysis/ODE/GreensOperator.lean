@@ -353,7 +353,8 @@ private lemma sine_product_integral_of_ne (k j : ℕ+) (hkj : k ≠ j) :
     (hc₁.intervalIntegrable 0 1) (hc₂.intervalIntegrable 0 1),
     cos_int_mul_pi_integral _ hdiff, cos_int_mul_pi_integral _ hsum, sub_self]
 
-private lemma sine_product_integral (k j : ℕ+) :
+/-- The canonical sine basis is orthonormal on the unit interval, in product-integral form. -/
+lemma sine_product_integral (k j : ℕ+) :
     (∫ x in (0 : ℝ)..1, sineBasisFun k x * sineBasisFun j x) =
       if k = j then 1 else 0 := by
   classical
