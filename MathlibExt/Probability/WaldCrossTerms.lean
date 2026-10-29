@@ -43,13 +43,13 @@ base `MathlibExt`, or in Mathlib.
 
 ## Scope
 
-The diagonal term `wald_diagonal_terms` and the integrability lemma
-`integrable_stopped_sum_sq_diag` are **not** claimed: in v1 both are
-proved by applying Wald's equation to the squared sequence, i.e. they
-rest on batch 5's `wald_equation`. The base already contains
-`MeasureTheory.wald_equation` in `MathlibExt/Probability/WaldEquation.lean`
-and the completed `MeasureTheory.wald_second_equation`. Re-proving the
-diagonal results here would duplicate the existing Wald development.
+`MathlibExt/Probability/WaldDiagonalTerms.lean` provides the diagonal term
+`wald_diagonal_terms` and the integrability lemma `integrable_stopped_sum_sq_diag`.
+It applies the canonical `MeasureTheory.wald_equation` and
+`MeasureTheory.wald_integrable_stopped_sum` from
+`MathlibExt/Probability/WaldEquation.lean` to the squared sequence. These diagonal
+APIs complement the cross-term results in this module and the existing
+`MeasureTheory.wald_second_equation`.
 
 The one place v1's `wald_cross_terms_zero` relies on a helper from
 `WaldEquation.lean` (`sum_range_eq_tsum_ite`, which batch 5 carries as a
