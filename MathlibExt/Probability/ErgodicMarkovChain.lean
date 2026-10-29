@@ -8,16 +8,11 @@ LICENSE file in the root directory of this source tree.
 
 module
 
-public import Mathlib.Algebra.BigOperators.Fin
-public import Mathlib.Algebra.Order.BigOperators.Group.Finset
-public import Mathlib.Algebra.Order.BigOperators.GroupWithZero.Finset
-public import Mathlib.Basic.Real.Basic
-public import Mathlib.Data.Fin.Basic
-public import Mathlib.Data.Matrix.Basic
+public import MathlibExt.Probability.KolmogorovCycleNecessity
 public import Mathlib.Data.Matrix.Mul
 public import Mathlib.LinearAlgebra.Matrix.Irreducible.Defs
-public import Mathlib.Tactic.Linarith
-public import Mathlib.Tactic.NormNum
+
+import all MathlibExt.Probability.KolmogorovCycleNecessity
 
 /-!
 # Ergodic finite Markov chains
@@ -58,16 +53,13 @@ by matrix algebra. No measure theory is used.
 * `StochasticMatrix.not_isErgodic_identity`: the identity chain is not
   ergodic (for `M ≥ 1`).
 
-## Namespacing note
+## Canonical representation
 
-`StochasticMatrix` and `matPow` are re-declared here inside
-`MathlibExt.Probability.ErgodicMarkovChain`, as namespace-scoped copies of
-the identically named declarations in
-`MathlibExt.Probability.KolmogorovCycleNecessity` (batch 17, un-namespaced)
-and `MathlibExt.Probability.KolmogorovCycleSufficiency` (batch 37).
-On rebase, delete the copies in this file and re-point the statements at
-the unified declarations; the proofs are written against the v1 names
-and do not depend on which copy is in scope.
+The root `StochasticMatrix` and its `matPow` recursion come from
+`MathlibExt.Probability.KolmogorovCycleNecessity`, also used by the cycle-sufficiency
+APIs. This file extends that root namespace with the matrix-power bridge and
+finite-state ergodicity results. The module namespace remains openable for clients;
+all stochastic-matrix declarations use the shared canonical type.
 
 ## Scope
 
@@ -86,24 +78,11 @@ stopping times, path measures).
 open Finset BigOperators
 
 namespace MathlibExt.Probability.ErgodicMarkovChain
-
-/-- A `StochasticMatrix M` is an `(M + 1) × (M + 1)` row-stochastic matrix: entries
-`prob i j` are non-negative real numbers, and the rows sum to `1`. This is the
-transition matrix of a Markov chain on the finite state space `Fin (M + 1)`. -/
-structure StochasticMatrix (M : ℕ) where
-  prob : Fin (M + 1) → Fin (M + 1) → ℝ
-  nonneg : ∀ i j, 0 ≤ prob i j
-  row_sum : ∀ i, ∑ j, prob i j = 1
+end MathlibExt.Probability.ErgodicMarkovChain
 
 namespace StochasticMatrix
 
 variable {M : ℕ}
-
-/-- The `n`-th matrix power of a stochastic transition matrix `P`. Entry `(i, j)`
-represents the probability of moving from state `i` to state `j` in exactly `n` steps. -/
-def matPow (P : StochasticMatrix M) : ℕ → (Fin (M + 1) → Fin (M + 1) → ℝ)
-  | 0 => fun i j => if i = j then 1 else 0
-  | n + 1 => fun i j => ∑ k, P.prob i k * P.matPow n k j
 
 /-- Underlying matrix of probabilities of a `StochasticMatrix`. -/
 def toMatrix (P : StochasticMatrix M) : Matrix (Fin (M + 1)) (Fin (M + 1)) ℝ :=
@@ -145,16 +124,14 @@ theorem isErgodic_iff_isPrimitive (P : StochasticMatrix M) :
   · rintro ⟨-, n, hn, h⟩
     exact ⟨n, hn, h⟩
 
+private theorem canonical_matPow_nonneg (P : StochasticMatrix M) :
+    ∀ (n : ℕ) (i j : Fin (M + 1)), 0 ≤ P.matPow n i j :=
+  StochasticMatrix.matPow_nonneg P
+
 /-- Every entry of every power of a stochastic matrix is nonnegative. -/
 theorem matPow_nonneg (P : StochasticMatrix M) : ∀ (n : ℕ) (i j : Fin (M + 1)),
-    0 ≤ P.matPow n i j := by
-  intro n
-  induction n with
-  | zero => intro i j; simp only [matPow]; split_ifs <;> linarith
-  | succ k ih =>
-    intro i j
-    simp only [matPow]
-    exact Finset.sum_nonneg fun c _ => mul_nonneg (P.nonneg i c) (ih c j)
+    0 ≤ P.matPow n i j :=
+  canonical_matPow_nonneg P
 
 /-- Every row of every power of a stochastic matrix sums to `1`: powers of a
 stochastic matrix are stochastic. -/
@@ -320,5 +297,3 @@ theorem not_isErgodic_identity {M : ℕ} (hM : 1 ≤ M) : ¬ (identity M).IsErgo
   exact lt_irrefl 0 h01
 
 end StochasticMatrix
-
-end MathlibExt.Probability.ErgodicMarkovChain
