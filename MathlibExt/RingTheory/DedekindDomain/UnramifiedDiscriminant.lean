@@ -16,13 +16,13 @@ attribute [local instance] FractionRing.liftAlgebra FractionRing.isScalarTower_l
 @[expose] public section
 
 /-!
-# Unramified above a prime iff the prime does not divide the discriminant ideal
+# Standard unramified-in criterion for the discriminant ideal
 
 ATLAS `NumberTheoryI`, Theorem 12.19 (discriminant half). Let `A` be a Dedekind
 domain with fraction field `K`, let `L / K` be a finite separable extension, and
 let `B` be the integral closure of `A` in `L`. For a nonzero prime `𝔭` of `A`,
-the extension is unramified at every prime `𝔮` of `B` lying above `𝔭` if and only
-if `𝔭` does not divide the discriminant ideal of `B / A`.
+the extension satisfies Mathlib's standard `Algebra.IsUnramifiedIn B 𝔭.asIdeal`
+if and only if `𝔭` does not divide the discriminant ideal of `B / A`.
 
 The discriminant ideal is `Ideal.discriminantIdeal A B` from
 `MathlibExt.RingTheory.DedekindDomain.DiscriminantTower`, defined as
@@ -48,14 +48,37 @@ power statement.
 
 ## Main results
 
-* `Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal`: the
-  discriminant-half of Theorem 12.19.
-* `Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal` and
-  `Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt`: the two
-  implications separately.
+* `Ideal.isUnramifiedIn_iff_not_dvd_discriminantIdeal`: the standard primary
+  discriminant-half of Theorem 12.19, with direct `A`/`B` hypotheses.
+* `Ideal.isUnramifiedAt_iff_not_dvd_discriminantIdeal`,
+  `Ideal.isUnramifiedAt_of_not_dvd_discriminantIdeal`, and
+  `Ideal.not_dvd_discriminantIdeal_of_isUnramifiedAt`: the original height-one
+  statements, now derived compatibility results of the primary criterion.
+
+The standard predicate quantifies over every prime ideal of `B` above `𝔭`.
+Such a prime is nonzero by `Ideal.ne_bot_of_liesOver_of_ne_bot`; hence the
+height-one formulation is equivalent here. The ideal arguments remain private
+proof helpers. No separate public height-one proof engine or new predicate is
+introduced.
 -/
 
 namespace Ideal
+
+/-- Every prime over the nonzero base prime is nonzero, so the standard
+unramified-in predicate is equivalent to the height-one formulation. -/
+private theorem isUnramifiedIn_iff_forall_heightOne
+    (A B : Type*) [CommRing A] [CommRing B] [Algebra A B] [FaithfulSMul A B]
+    (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
+    Algebra.IsUnramifiedIn B 𝔭.asIdeal ↔
+      ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B,
+        𝔮.asIdeal.LiesOver 𝔭.asIdeal → Algebra.IsUnramifiedAt A 𝔮.asIdeal := by
+  constructor
+  · intro h 𝔮 hlies
+    exact h 𝔮.asIdeal 𝔮.isPrime hlies
+  · intro h P hPprime hPlies
+    let : P.IsPrime := hPprime
+    let : P.LiesOver 𝔭.asIdeal := hPlies
+    exact h ⟨P, hPprime, Ideal.ne_bot_of_liesOver_of_ne_bot 𝔭.ne_bot P⟩ hPlies
 
 variable (A B : Type*) [CommRing A] [CommRing B] [Algebra A B]
   [IsDedekindDomain A] [IsDedekindDomain B] [Module.IsTorsionFree A B]
@@ -64,7 +87,7 @@ variable (A B : Type*) [CommRing A] [CommRing B] [Algebra A B]
 
 /-- If the extension is unramified at every prime above `𝔭`, then `𝔭` does not
 divide the discriminant ideal. -/
-theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
+private theorem not_dvd_discriminantIdeal_of_heightOne_core
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
@@ -100,7 +123,7 @@ theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
 
 /-- If `𝔭` does not divide the discriminant ideal, then the extension is
 unramified at every prime above `𝔭`. -/
-theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
+private theorem heightOne_isUnramifiedAt_of_not_dvd_core
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
     (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
     (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
@@ -128,15 +151,45 @@ theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
     exact relNorm_mono A (Ideal.dvd_iff_le.mp hqdvd)
   exact dvd_trans h1 h2
 
-/-- Theorem 12.19, discriminant half: the extension is unramified at every
-prime above `𝔭` if and only if `𝔭` does not divide the discriminant ideal. -/
+
+/-- Theorem 12.19, discriminant half, in Mathlib's standard predicate:
+`𝔭` is unramified in `B` exactly when it does not divide the discriminant ideal. -/
+theorem isUnramifiedIn_iff_not_dvd_discriminantIdeal
+    (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
+    Algebra.IsUnramifiedIn B 𝔭.asIdeal ↔
+      ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
+  (isUnramifiedIn_iff_forall_heightOne A B 𝔭).trans
+    ⟨not_dvd_discriminantIdeal_of_heightOne_core A B 𝔭,
+     fun hndvd 𝔮 hlies =>
+       heightOne_isUnramifiedAt_of_not_dvd_core A B 𝔭 hndvd 𝔮 hlies⟩
+
+/-- Height-one compatibility: derive nondivisibility from the standard
+unramified-in criterion after converting the original height-one premise. -/
+theorem not_dvd_discriminantIdeal_of_isUnramifiedAt
+    (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
+    (hall : ∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
+      Algebra.IsUnramifiedAt A 𝔮.asIdeal) :
+    ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
+  (isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭).mp
+    ((isUnramifiedIn_iff_forall_heightOne A B 𝔭).mpr hall)
+
+/-- Height-one compatibility: evaluate the standard unramified-in conclusion
+at the particular height-one prime supplied by an original client. -/
+theorem isUnramifiedAt_of_not_dvd_discriminantIdeal
+    (𝔭 : IsDedekindDomain.HeightOneSpectrum A)
+    (hndvd : ¬ (𝔭.asIdeal ∣ discriminantIdeal A B))
+    (𝔮 : IsDedekindDomain.HeightOneSpectrum B) (hlies : 𝔮.asIdeal.LiesOver 𝔭.asIdeal) :
+    Algebra.IsUnramifiedAt A 𝔮.asIdeal :=
+  (isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭).mpr hndvd
+    𝔮.asIdeal 𝔮.isPrime hlies
+
+/-- The original height-one formulation, derived from the standard primary criterion. -/
 theorem isUnramifiedAt_iff_not_dvd_discriminantIdeal
     (𝔭 : IsDedekindDomain.HeightOneSpectrum A) :
     (∀ 𝔮 : IsDedekindDomain.HeightOneSpectrum B, 𝔮.asIdeal.LiesOver 𝔭.asIdeal →
       Algebra.IsUnramifiedAt A 𝔮.asIdeal) ↔
     ¬ (𝔭.asIdeal ∣ discriminantIdeal A B) :=
-  ⟨not_dvd_discriminantIdeal_of_isUnramifiedAt A B 𝔭,
-   fun hndvd 𝔮 hlies =>
-     isUnramifiedAt_of_not_dvd_discriminantIdeal A B 𝔭 hndvd 𝔮 hlies⟩
+  (isUnramifiedIn_iff_forall_heightOne A B 𝔭).symm.trans
+    (isUnramifiedIn_iff_not_dvd_discriminantIdeal A B 𝔭)
 
 end Ideal

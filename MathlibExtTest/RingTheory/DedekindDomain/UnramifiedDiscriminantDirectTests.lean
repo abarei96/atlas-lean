@@ -14,10 +14,12 @@ public import MathlibExt.RingTheory.DedekindDomain.FiniteRamification
 @[expose] public section
 
 /-!
-# Direct Dedekind-extension clients
+# Direct standard and compatible Dedekind-extension clients
 
 These clients use only the two rings and separability of their fraction rings.
 They require no auxiliary fraction-field presentations or compatible towers.
+The standard `IsUnramifiedIn` clients also compose with finite ramification;
+the three original height-one clients are retained.
 -/
 
 set_option autoImplicit false
