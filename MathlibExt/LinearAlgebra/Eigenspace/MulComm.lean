@@ -20,8 +20,8 @@ For linear maps `f : V →ₗ[𝕜] W` and `g : W →ₗ[𝕜] V` over a field, 
 eigenvalues of `f ∘ₗ g` and of `g ∘ₗ f` coincide, and they do so with the same
 geometric multiplicity: the eigenspaces are linearly equivalent, via `g` and a
 rescaled `f`. Generalized eigenspaces have equal `Module.finrank` at every
-exponent. In finite dimension the stabilized generalized eigenspace (for example
-at exponent `⊤`) measures algebraic multiplicity.
+exponent and are finite-dimensional together. In finite dimension the stabilized
+generalized eigenspace (for example at exponent `⊤`) measures algebraic multiplicity.
 
 This is the eigenvector-level refinement of the spectrum statement in Mathlib
 (`spectrum.nonzero_mul_comm`): the spectrum records only invertibility, while
@@ -45,12 +45,15 @@ same nonzero eigenvalues. The bounded-operator version is in
   dimension these are the geometric multiplicities.
 * `End.finrank_genEigenspace_comp_eq`: the generalized eigenspaces
   have equal `Module.finrank`, for every exponent `k : ℕ∞`.
+* `End.finite_genEigenspace_comp_iff`: the generalized eigenspaces are
+  finite-dimensional together for every exponent `k : ℕ∞`.
 * `End.hasEigenvector_comp`: an eigenvector of `f ∘ₗ g` is sent by `g`
   to an eigenvector of `g ∘ₗ f` for the same nonzero eigenvalue.
 * The `*_mul_*` versions: the same statements for endomorphisms, with `*`
   in place of `∘ₗ`.
 * `Matrix.hasEigenvalue_mul_iff`, `Matrix.finrank_eigenspace_mul_eq`,
-  `Matrix.finrank_genEigenspace_mul_eq`: the matrix versions, for
+  `Matrix.finrank_genEigenspace_mul_eq`, `Matrix.finite_genEigenspace_mul_iff`:
+  the matrix versions, for
   `A : Matrix ι κ 𝕜` and `B : Matrix κ ι 𝕜`.
 -/
 
@@ -216,6 +219,22 @@ theorem injective_genEigenspaceCompMap (f : V →ₗ[𝕜] W) (g : W →ₗ[𝕜
     eq_zero_of_apply_eq_zero_of_mem_genEigenspace hμ x.2 hgx
   exact Subtype.ext hx0
 
+/-- For a nonzero scalar, the generalized eigenspaces of `f ∘ₗ g` and of
+`g ∘ₗ f` are finite-dimensional together, for every exponent `k : ℕ∞`. -/
+theorem finite_genEigenspace_comp_iff (f : V →ₗ[𝕜] W) (g : W →ₗ[𝕜] V) {μ : 𝕜}
+    (hμ : μ ≠ 0) (k : ℕ∞) :
+    Module.Finite 𝕜 (Module.End.genEigenspace (f ∘ₗ g) μ k) ↔
+      Module.Finite 𝕜 (Module.End.genEigenspace (g ∘ₗ f) μ k) := by
+  constructor
+  · intro hfin
+    let := hfin
+    exact FiniteDimensional.of_injective (genEigenspaceCompMap g f μ k)
+      (injective_genEigenspaceCompMap g f hμ k)
+  · intro hfin
+    let := hfin
+    exact FiniteDimensional.of_injective (genEigenspaceCompMap f g μ k)
+      (injective_genEigenspaceCompMap f g hμ k)
+
 set_option linter.style.haveILetI false in
 /-- The generalized `μ`-eigenspaces of `f ∘ₗ g` and of `g ∘ₗ f` have equal
 `Module.finrank`, for every exponent `k : ℕ∞` and every nonzero `μ`.
@@ -227,24 +246,16 @@ theorem finrank_genEigenspace_comp_eq (f : V →ₗ[𝕜] W) (g : W →ₗ[𝕜]
     Module.finrank 𝕜 (Module.End.genEigenspace (f ∘ₗ g) μ k) =
       Module.finrank 𝕜 (Module.End.genEigenspace (g ∘ₗ f) μ k) := by
   by_cases hfin : Module.Finite 𝕜 (Module.End.genEigenspace (f ∘ₗ g) μ k)
-  · by_cases hfin' : Module.Finite 𝕜 (Module.End.genEigenspace (g ∘ₗ f) μ k)
-    · haveI := hfin
-      haveI := hfin'
-      exact le_antisymm
-        (LinearMap.finrank_le_finrank_of_injective
-          (injective_genEigenspaceCompMap f g hμ k))
-        (LinearMap.finrank_le_finrank_of_injective
-          (injective_genEigenspaceCompMap g f hμ k))
-    · haveI := hfin
-      have hcontra : Module.Finite 𝕜 (Module.End.genEigenspace (g ∘ₗ f) μ k) :=
-        FiniteDimensional.of_injective (genEigenspaceCompMap g f μ k)
-          (injective_genEigenspaceCompMap g f hμ k)
-      exact absurd hcontra hfin'
+  · let := hfin
+    let := (finite_genEigenspace_comp_iff f g hμ k).mp hfin
+    exact le_antisymm
+      (LinearMap.finrank_le_finrank_of_injective
+        (injective_genEigenspaceCompMap f g hμ k))
+      (LinearMap.finrank_le_finrank_of_injective
+        (injective_genEigenspaceCompMap g f hμ k))
   · have hfin' : ¬ Module.Finite 𝕜 (Module.End.genEigenspace (g ∘ₗ f) μ k) := by
       intro h
-      haveI := h
-      exact hfin (FiniteDimensional.of_injective (genEigenspaceCompMap f g μ k)
-        (injective_genEigenspaceCompMap f g hμ k))
+      exact hfin ((finite_genEigenspace_comp_iff f g hμ k).mpr h)
     rw [Module.finrank_of_not_finite hfin, Module.finrank_of_not_finite hfin']
 
 section Mul
@@ -284,6 +295,14 @@ theorem finrank_genEigenspace_mul_eq (A B : Module.End 𝕜 V) {μ : 𝕜} (hμ 
   simp only [Module.End.mul_eq_comp]
   exact finrank_genEigenspace_comp_eq A B hμ k
 
+/-- The `*` form of `finite_genEigenspace_comp_iff`. -/
+theorem finite_genEigenspace_mul_iff (A B : Module.End 𝕜 V) {μ : 𝕜} (hμ : μ ≠ 0)
+    (k : ℕ∞) :
+    Module.Finite 𝕜 ((A * B).genEigenspace μ k) ↔
+      Module.Finite 𝕜 ((B * A).genEigenspace μ k) := by
+  simp only [Module.End.mul_eq_comp]
+  exact finite_genEigenspace_comp_iff A B hμ k
+
 end Mul
 
 end End
@@ -319,6 +338,15 @@ theorem finrank_genEigenspace_mul_eq (A : Matrix ι κ 𝕜) (B : Matrix κ ι �
       Module.finrank 𝕜 (Module.End.genEigenspace (Matrix.toLin' (B * A)) μ k) := by
   rw [Matrix.toLin'_mul, Matrix.toLin'_mul]
   exact End.finrank_genEigenspace_comp_eq (Matrix.toLin' A) (Matrix.toLin' B) hμ k
+
+/-- The generalized eigenspaces of rectangular products in opposite orders
+are finite-dimensional together for a nonzero scalar and every exponent. -/
+theorem finite_genEigenspace_mul_iff (A : Matrix ι κ 𝕜) (B : Matrix κ ι 𝕜) {μ : 𝕜}
+    (hμ : μ ≠ 0) (k : ℕ∞) :
+    Module.Finite 𝕜 (Module.End.genEigenspace (Matrix.toLin' (A * B)) μ k) ↔
+      Module.Finite 𝕜 (Module.End.genEigenspace (Matrix.toLin' (B * A)) μ k) := by
+  rw [Matrix.toLin'_mul, Matrix.toLin'_mul]
+  exact End.finite_genEigenspace_comp_iff (Matrix.toLin' A) (Matrix.toLin' B) hμ k
 
 end Matrix
 

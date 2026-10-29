@@ -17,8 +17,9 @@ public import MathlibExt.LinearAlgebra.Eigenspace.MulComm
 # Nonzero eigenvalues of a product of bounded operators, in either order
 
 For bounded operators `S T : E →L[𝕜] E`, the nonzero eigenvalues of `S * T`
-and of `T * S` coincide, with the same geometric and generalized
-multiplicities. This is the bounded-operator form of the linear-map statements
+and of `T * S` coincide, with the same geometric multiplicity. Generalized
+eigenspaces have equal `Module.finrank` at every exponent and are
+finite-dimensional together. This is the bounded-operator form of the linear-map statements
 in `MathlibExt.LinearAlgebra.Eigenspace.MulComm`, obtained by coercing the
 products to endomorphisms.
 
@@ -35,8 +36,10 @@ Mathlib's Fredholm alternative for compact operators.
   `S * T` vs `T * S`.
 * `ContinuousLinearMap.finrank_eigenspace_mul_eq`: equal geometric
   multiplicities for bounded operators.
-* `ContinuousLinearMap.finrank_genEigenspace_mul_eq`: equal generalized
-  multiplicities for bounded operators.
+* `ContinuousLinearMap.finrank_genEigenspace_mul_eq`: equal finranks of
+  generalized eigenspaces for bounded operators.
+* `ContinuousLinearMap.finite_genEigenspace_mul_iff`: finite-dimensionality
+  parity for generalized eigenspaces of bounded operators.
 * `ContinuousLinearMap.hasEigenvalue_adjoint_mul_self_iff`: nonzero
   eigenvalues of `T† * T` vs `T * T†`.
 -/
@@ -78,6 +81,18 @@ theorem finrank_genEigenspace_mul_eq (S T : E →L[𝕜] E) {μ : 𝕜} (hμ : �
         (Module.End.genEigenspace ((T * S : E →L[𝕜] E) : Module.End 𝕜 E) μ k) := by
   rw [ContinuousLinearMap.toLinearMap_mul, ContinuousLinearMap.toLinearMap_mul]
   exact MathlibExt.LinearAlgebra.Eigenspace.MulComm.End.finrank_genEigenspace_mul_eq
+    (S : Module.End 𝕜 E) (T : Module.End 𝕜 E) hμ k
+
+/-- Generalized eigenspaces of reversed bounded-operator products are
+finite-dimensional together for a nonzero scalar and every exponent. -/
+theorem finite_genEigenspace_mul_iff (S T : E →L[𝕜] E) {μ : 𝕜} (hμ : μ ≠ 0)
+    (k : ℕ∞) :
+    Module.Finite 𝕜
+        (Module.End.genEigenspace ((S * T : E →L[𝕜] E) : Module.End 𝕜 E) μ k) ↔
+      Module.Finite 𝕜
+        (Module.End.genEigenspace ((T * S : E →L[𝕜] E) : Module.End 𝕜 E) μ k) := by
+  rw [ContinuousLinearMap.toLinearMap_mul, ContinuousLinearMap.toLinearMap_mul]
+  exact MathlibExt.LinearAlgebra.Eigenspace.MulComm.End.finite_genEigenspace_mul_iff
     (S : Module.End 𝕜 E) (T : Module.End 𝕜 E) hμ k
 
 /-- A nonzero scalar is an eigenvalue of `T† * T` iff it is an eigenvalue of
