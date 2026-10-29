@@ -14,6 +14,7 @@ public import Mathlib.MeasureTheory.Integral.Lebesgue.Markov
 public import Mathlib.MeasureTheory.OuterMeasure.BorelCantelli
 public import Mathlib.Analysis.SpecificLimits.Basic
 public import Mathlib.MeasureTheory.Function.SpecialFunctions.Basic
+public import Mathlib.Probability.Process.Kolmogorov
 
 /-!
 # Kolmogorov continuity theorem
