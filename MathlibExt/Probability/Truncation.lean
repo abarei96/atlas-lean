@@ -121,40 +121,40 @@ theorem ae_tendsto_truncatedRV_of_bdd
 
 /-- Canonical truncation is in every `Lᵖ` on a finite measure space. -/
 theorem memLp_truncatedRV [IsFiniteMeasure μ] {X : ℕ → Ω → ℝ}
-    (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) (p : ℝ≥0∞) :
+    (n : ℕ) (hX : Measurable (X n)) (A : ℝ) (p : ℝ≥0∞) :
     MemLp (truncatedRV X A n) p μ :=
-  MemLp.of_bound (measurable_truncatedRV hX A n).aestronglyMeasurable |A|
+  MemLp.of_bound (measurable_truncatedRV_of_measurable n hX A).aestronglyMeasurable |A|
     (Filter.Eventually.of_forall fun ω => by
       rw [Real.norm_eq_abs]
       exact abs_truncatedRV_le_abs A n ω)
 
 /-- Canonical truncation is integrable on a finite measure space. -/
 theorem integrable_truncatedRV [IsFiniteMeasure μ] {X : ℕ → Ω → ℝ}
-    (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
+    (n : ℕ) (hX : Measurable (X n)) (A : ℝ) :
     Integrable (truncatedRV X A n) μ :=
-  (memLp_truncatedRV hX A n 1).integrable le_rfl
+  (memLp_truncatedRV n hX A 1).integrable le_rfl
 
 /-- The variance of canonical truncation is at most `A²`. -/
 theorem variance_truncatedRV_le [IsProbabilityMeasure μ] {X : ℕ → Ω → ℝ}
-    (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
+    (n : ℕ) (hX : Measurable (X n)) (A : ℝ) :
     variance (truncatedRV X A n) μ ≤ A ^ 2 := by
   have hmem : ∀ᵐ ω ∂μ, truncatedRV X A n ω ∈ Set.Icc (-|A|) |A| := by
     filter_upwards with ω
     exact abs_le.mp (abs_truncatedRV_le_abs A n ω)
   have hbound := variance_le_sq_of_bounded (a := -|A|) (b := |A|) hmem
-    (measurable_truncatedRV hX A n).aemeasurable
+    (measurable_truncatedRV_of_measurable n hX A).aemeasurable
   calc variance (truncatedRV X A n) μ ≤ ((|A| - -|A|) / 2) ^ 2 := hbound
     _ = A ^ 2 := by
         rw [sub_neg_eq_add, ← two_mul, mul_div_cancel_left₀ _ (two_ne_zero), sq_abs]
 
 /-- The absolute mean of canonical truncation is at most `|A|`. -/
 theorem abs_integral_truncatedRV_le [IsProbabilityMeasure μ] {X : ℕ → Ω → ℝ}
-    (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
+    (n : ℕ) (hX : Measurable (X n)) (A : ℝ) :
     |∫ ω, truncatedRV X A n ω ∂μ| ≤ |A| := by
   calc |∫ ω, truncatedRV X A n ω ∂μ| ≤ ∫ ω, |truncatedRV X A n ω| ∂μ :=
         abs_integral_le_integral_abs
     _ ≤ ∫ _, |A| ∂μ :=
-        integral_mono_ae (integrable_truncatedRV hX A n).abs (integrable_const _)
+        integral_mono_ae (integrable_truncatedRV n hX A).abs (integrable_const _)
           (Filter.Eventually.of_forall fun ω => abs_truncatedRV_le_abs A n ω)
     _ = |A| := by simp
 

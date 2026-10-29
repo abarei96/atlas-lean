@@ -91,26 +91,26 @@ theorem ae_tendsto_truncRV_zero :
 theorem memLp_truncRV_test [IsFiniteMeasure μ] {X : ℕ → Ω → ℝ}
     (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) (p : ℝ≥0∞) :
     MemLp (truncatedRV X A n) p μ :=
-  memLp_truncatedRV hX A n p
+  memLp_truncatedRV n (hX n) A p
 
 /-- Signature restatement: a truncation is integrable. -/
 theorem integrable_truncRV_test [IsFiniteMeasure μ] {X : ℕ → Ω → ℝ}
     (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
     Integrable (truncatedRV X A n) μ :=
-  integrable_truncatedRV hX A n
+  integrable_truncatedRV n (hX n) A
 
 /-- Signature restatement: the variance of a truncation is at most `A²`. -/
 theorem variance_truncRV_le_test [IsProbabilityMeasure μ] {X : ℕ → Ω → ℝ}
     (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
     variance (truncatedRV X A n) μ ≤ A ^ 2 :=
-  variance_truncatedRV_le hX A n
+  variance_truncatedRV_le n (hX n) A
 
 /-- Signature restatement: the mean of a truncation is at most `|A|` in
 absolute value. -/
 theorem abs_integral_truncRV_le_test [IsProbabilityMeasure μ] {X : ℕ → Ω → ℝ}
     (hX : ∀ n, Measurable (X n)) (A : ℝ) (n : ℕ) :
     |∫ ω, truncatedRV X A n ω ∂μ| ≤ |A| :=
-  abs_integral_truncatedRV_le hX A n
+  abs_integral_truncatedRV_le n (hX n) A
 
 #print axioms variance_truncRV_le_test
 

@@ -49,13 +49,13 @@ theorem strict_tail_boundary : Measure.dirac (2 : ℝ) {x : ℝ | 2 < |x|} = 0 :
 theorem finite_nonprobability_integrable :
     Integrable (truncatedRV (fun (_ : ℕ) (_ : ℝ) => (2 : ℝ)) 2 0)
       (Measure.dirac (0 : ℝ) + Measure.dirac (0 : ℝ)) :=
-  integrable_truncatedRV (fun _ => measurable_const) 2 0
+  integrable_truncatedRV 0 measurable_const 2
 
 /-- The public Lp API also covers the top exponent on a finite non-probability measure. -/
 theorem finite_nonprobability_top :
     MemLp (truncatedRV (fun (_ : ℕ) (_ : ℝ) => (2 : ℝ)) 2 0) ⊤
       (Measure.dirac (0 : ℝ) + Measure.dirac (0 : ℝ)) :=
-  memLp_truncatedRV (fun _ => measurable_const) 2 0 ⊤
+  memLp_truncatedRV 0 measurable_const 2 ⊤
 
 /-- The probability assumption in the mean bound is substantive: mass two gives mean four. -/
 theorem finite_mass_two_mean :
