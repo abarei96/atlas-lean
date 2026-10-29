@@ -10,9 +10,6 @@ module
 
 public import MathlibExt.RingTheory.DedekindDomain.DiscriminantTower
 
-import Mathlib.Algebra.BigOperators.Associated
-import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
-import Mathlib.RingTheory.Ideal.Over
 
 attribute [local instance] FractionRing.liftAlgebra FractionRing.isScalarTower_liftAlgebra
 
