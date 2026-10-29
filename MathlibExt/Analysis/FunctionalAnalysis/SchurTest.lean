@@ -8,16 +8,7 @@ LICENSE file in the root directory of this source tree.
 
 module
 
-public import Mathlib.Analysis.InnerProductSpace.PiL2
-public import Mathlib.Analysis.Normed.Lp.Matrix
-public import Mathlib.Analysis.Normed.Lp.PiLp
-public import Mathlib.Analysis.Normed.Operator.Basic
-
-import Mathlib.Analysis.RCLike.Basic
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.Positivity
-import Mathlib.Tactic.Ring
+public import Mathlib.Analysis.CStarAlgebra.Matrix
 
 /-!
 # Schur's test for finite matrices
@@ -46,9 +37,11 @@ and column-sum bounds for the `ℓ¹` operator norm, but no `ℓ²` Schur test.
 * `schur_pointwise_sq_le` : the per-row estimate.
 * `schur_norm_sq_le` : the squared-norm estimate `‖A x‖² ≤ R * C * ‖x‖²`.
 * `schur_apply_le` : the unsquared estimate `‖A x‖ ≤ √(R * C) * ‖x‖`.
-* `schurCLM` : the matrix as a continuous linear map on Euclidean spaces.
-* `norm_schurCLM_le` : `‖schurCLM A …‖ ≤ √(R * C)`.
-* `norm_schurCLM_le_of_le` : the single-bound form `‖schurCLM A …‖ ≤ B`.
+* `norm_toEuclideanLin_le` : the canonical rectangular operator bound.
+* `norm_toEuclideanCLM_le` : the canonical square operator bound.
+* `norm_matrix_l2_le` : the bound for the scoped matrix L2 operator norm.
+* `schurCLM` : compatibility abbreviation for the canonical rectangular map.
+* `norm_schurCLM_le`, `norm_schurCLM_le_of_le` : compatibility bound forms.
 -/
 
 @[expose] public section
@@ -142,28 +135,50 @@ theorem schur_apply_le (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 
     _ = Real.sqrt (R * C) * ‖x‖ := by
         rw [Real.sqrt_mul hnn, Real.sqrt_sq (norm_nonneg _)]
 
-/-- The matrix `A` as a continuous linear map on Euclidean spaces, built
-from Schur's test. The row and column bounds are part of the data, so the
-operator-norm bound `norm_schurCLM_le` is available by construction. -/
-noncomputable def schurCLM (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 ≤ C)
+/-- Schur's test for the canonical rectangular Euclidean matrix operator. -/
+theorem norm_toEuclideanLin_le (A : Matrix m n 𝕜) {R C : ℝ}
+    (hR : 0 ≤ R) (hC : 0 ≤ C)
     (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
+    ‖(Matrix.toEuclideanLin A).toContinuousLinearMap‖ ≤ Real.sqrt (R * C) := by
+  apply ContinuousLinearMap.opNorm_le_bound _ (Real.sqrt_nonneg _)
+  intro x
+  exact schur_apply_le A hR hC hrow hcol x
+
+/-- Schur's test for Mathlib's square Euclidean continuous linear map. -/
+theorem norm_toEuclideanCLM_le (A : Matrix n n 𝕜) {R C : ℝ}
+    (hR : 0 ≤ R) (hC : 0 ≤ C)
+    (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
+    ‖Matrix.toEuclideanCLM (n := n) (𝕜 := 𝕜) A‖ ≤ Real.sqrt (R * C) := by
+  exact norm_toEuclideanLin_le A hR hC hrow hcol
+
+open scoped Matrix.Norms.L2Operator in
+/-- Schur's test for the actual scoped L2 operator norm of a matrix. -/
+theorem norm_matrix_l2_le (A : Matrix m n 𝕜) {R C : ℝ}
+    (hR : 0 ≤ R) (hC : 0 ≤ C)
+    (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
+    ‖A‖ ≤ Real.sqrt (R * C) := by
+  exact norm_toEuclideanLin_le A hR hC hrow hcol
+
+/-- Compatibility abbreviation for the canonical rectangular Euclidean map.
+The original bound arguments are retained as inputs; the map itself uses
+finite-dimensional continuity and is independent of those proof arguments. -/
+noncomputable abbrev schurCLM (A : Matrix m n 𝕜) {R C : ℝ} (_hR : 0 ≤ R) (_hC : 0 ≤ C)
+    (_hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (_hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
     EuclideanSpace 𝕜 n →L[𝕜] EuclideanSpace 𝕜 m :=
-  (Matrix.toLpLin 2 2 A).mkContinuous (Real.sqrt (R * C))
-    (fun x => schur_apply_le A hR hC hrow hcol x)
+  (Matrix.toEuclideanLin A).toContinuousLinearMap
 
 /-- `schurCLM` acts as the matrix. -/
 @[simp]
 theorem schurCLM_apply (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 ≤ C)
     (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C)
     (x : EuclideanSpace 𝕜 n) :
-    schurCLM A hR hC hrow hcol x = Matrix.toLpLin 2 2 A x := by
-  simp [schurCLM]
+    schurCLM A hR hC hrow hcol x = Matrix.toLpLin 2 2 A x := rfl
 
 /-- **Schur's test**: the operator norm of `schurCLM` is at most `√(R * C)`. -/
 theorem norm_schurCLM_le (A : Matrix m n 𝕜) {R C : ℝ} (hR : 0 ≤ R) (hC : 0 ≤ C)
     (hrow : ∀ i, ∑ j, ‖A i j‖ ≤ R) (hcol : ∀ j, ∑ i, ‖A i j‖ ≤ C) :
     ‖schurCLM A hR hC hrow hcol‖ ≤ Real.sqrt (R * C) :=
-  LinearMap.mkContinuous_norm_le _ (Real.sqrt_nonneg _) _
+  norm_toEuclideanLin_le A hR hC hrow hcol
 
 /-- **Schur's test**, single-bound form: if every row sum and every column
 sum of `‖A i j‖` is at most `B`, then `‖schurCLM A …‖ ≤ B`. -/

@@ -9,11 +9,6 @@ LICENSE file in the root directory of this source tree.
 module
 
 import MathlibExt.Analysis.FunctionalAnalysis.SchurTest
-import Mathlib.Analysis.CStarAlgebra.Matrix
-
-import Mathlib.Tactic.FinCases
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.Positivity
 
 /-!
 # Tests for Schur's test for finite matrices
@@ -84,10 +79,7 @@ theorem schur_allOnes_norm_le :
 theorem schur_zero_norm :
     ‖schurCLM (0 : Matrix (Fin 2) (Fin 2) ℂ) le_rfl le_rfl
       (fun _ => by simp) (fun _ => by simp)‖ = 0 := by
-  have h := norm_schurCLM_le (0 : Matrix (Fin 2) (Fin 2) ℂ) le_rfl le_rfl
-    (fun _ => by simp) (fun _ => by simp)
-  simp at h
-  rw [h, norm_zero]
+  simp [schurCLM]
 
 /-- The operator norm of `diag (1, 2)` on `ℂ²` is at most `2`. -/
 theorem schur_diagonal_norm_le :
