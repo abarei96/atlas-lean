@@ -26,6 +26,10 @@ public import Mathlib.MeasureTheory.Measure.Dirac.Basic
 public import Mathlib.Topology.Algebra.InfiniteSum.NatInt
 public import Mathlib.Analysis.SpecificLimits.Basic
 public import Mathlib.Analysis.PSeries
+public import MathlibExt.Probability.KolmogorovThreeSeries
+
+import MathlibExt.Probability.PaleyZygmund
+import MathlibExt.Probability.ThreeSeriesTailProb
 
 /-!
 # Kolmogorov three-series necessity, series (2)–(3)
@@ -72,17 +76,12 @@ form the three-series theorem actually needs.
   variance, hence a.s. convergent; the mean partial sums are then the
   difference of two convergent series at a single sample point.
 * Series (1) — summability of the tail probabilities
-  `∑'ₙ μ {A < |Xₙ|}` — is batch 36's theorem
-  (`ProbabilityTheory.summable_tail_prob_of_ae_tendsto` in
-  `MathlibExt/Probability/ThreeSeriesTailProb.lean`). It is reproduced
-  below as a `private` lemma only because the assembly needs it; on
-  rebase the private copy is deleted and batch 36's theorem is used.
-  The same holds for the two batch-10 helpers used to transfer
-  a.s. convergence from `X` to its truncations
-  (`MathlibExt/Probability/KolmogorovThreeSeries.lean`, which ports the
-  sufficiency direction). The truncation here is named `truncationRV`;
-  it is the same function as batch 64's `truncRV` (indicator form) and
-  batch 10's `truncatedRV`, presented with `ite` — unify on rebase.
+  `∑'ₙ μ {A < |Xₙ|}` — uses the public theorem
+  `ProbabilityTheory.summable_tail_prob_of_ae_tendsto` in
+  `MathlibExt/Probability/ThreeSeriesTailProb.lean`.
+  The convergence-transfer helpers and the canonical `truncatedRV`
+  come from `MathlibExt/Probability/KolmogorovThreeSeries.lean`.
+  The truncation properties are added to that canonical API.
 
 ## Relation to Mathlib
 
@@ -102,54 +101,9 @@ noncomputable section
 
 namespace MathlibExt.Probability.ThreeSeriesNecessity
 
+open ProbabilityTheory.KolmogorovThreeSeries
+
 variable {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} [IsProbabilityMeasure μ]
-
-/-- The truncation `Yₙ = Xₙ · 1_{|Xₙ| ≤ A}` of the random variable `Xₙ` at
-level `A`: the identity where `|Xₙ| ≤ A`, and `0` otherwise. This is the
-same function as batch 64's `truncRV` and batch 10's `truncatedRV`,
-presented with `ite` instead of an indicator. -/
-def truncationRV (X : ℕ → Ω → ℝ) (A : ℝ) (n : ℕ) : Ω → ℝ :=
-  fun ω => if |X n ω| ≤ A then X n ω else 0
-
-/-- The truncation of a measurable random variable is measurable. -/
-theorem measurable_truncationRV {X : ℕ → Ω → ℝ} (hX : ∀ n, Measurable (X n)) (A : ℝ)
-    (n : ℕ) : Measurable (truncationRV X A n) := by
-  unfold truncationRV
-  apply Measurable.ite _ (hX n) measurable_const
-  exact measurableSet_le (hX n).norm measurable_const
-
-omit [IsProbabilityMeasure μ] in
-/-- Truncation preserves independence. -/
-theorem iIndepFun_truncationRV {X : ℕ → Ω → ℝ} (hX : iIndepFun X μ) (A : ℝ) :
-    iIndepFun (fun n => truncationRV X A n) μ := by
-  apply hX.comp (fun _ => fun x : ℝ => if |x| ≤ A then x else 0) (fun _ => ?_)
-  exact Measurable.ite (measurableSet_le measurable_norm measurable_const) measurable_id'
-    measurable_const
-
-omit [MeasurableSpace Ω] in
-/-- A truncation is bounded by `A` in absolute value (for `0 ≤ A`). -/
-theorem abs_truncationRV_le {X : ℕ → Ω → ℝ} {A : ℝ} (hA : 0 ≤ A) (n : ℕ) (ω : Ω) :
-    |truncationRV X A n ω| ≤ A := by
-  show |if |X n ω| ≤ A then X n ω else 0| ≤ A
-  by_cases h : |X n ω| ≤ A
-  · rw [ite_eq_left h]; exact h
-  · rw [ite_eq_right h, abs_zero]; exact hA
-
-omit [MeasurableSpace Ω] in
-/-- A truncation is bounded by `|A|` in absolute value (for any `A`). -/
-theorem abs_truncationRV_le_abs {X : ℕ → Ω → ℝ} (A : ℝ) (n : ℕ) (ω : Ω) :
-    |truncationRV X A n ω| ≤ |A| := by
-  show |if |X n ω| ≤ A then X n ω else 0| ≤ |A|
-  by_cases h : |X n ω| ≤ A
-  · rw [ite_eq_left h]; exact h.trans (le_abs_self A)
-  · rw [ite_eq_right h, abs_zero]; exact abs_nonneg _
-
-omit [MeasurableSpace Ω] in
-/-- Truncation is the identity at points with `|Xₙ| ≤ A`. -/
-theorem truncationRV_eq_of_abs_le {X : ℕ → Ω → ℝ} {A : ℝ} {n : ℕ} {ω : Ω}
-    (h : |X n ω| ≤ A) : truncationRV X A n ω = X n ω := by
-  show (if |X n ω| ≤ A then X n ω else 0) = X n ω
-  rw [ite_eq_left h]
 
 /-- Private reproduction of batch 10's `eLpNorm_one_le_two` (private there):
 on a probability space, `‖f‖₁ ≤ ‖f‖₂`. -/
@@ -277,112 +231,42 @@ theorem iIndepFun_symmRV {Y : ℕ → Ω → ℝ} (hY : ∀ n, Measurable (Y n))
 and `E[S⁴] < ∞`, then `P(|S| > 1/2) ≥ (v - 1/4)² / E[S⁴]`. -/
 private theorem paley_zygmund_measure_abs_gt_half {S : Ω → ℝ}
     (hSmeas : Measurable S)
-    (hS2 : Integrable (fun ω => (S ω) ^ 2) μ)
+    (_hS2 : Integrable (fun ω => (S ω) ^ 2) μ)
     (hS4 : Integrable (fun ω => (S ω) ^ 4) μ)
     {v : ℝ} (hv : 1 / 4 < v) (hvS : v ≤ ∫ ω, (S ω) ^ 2 ∂μ) :
     (v - 1 / 4) ^ 2 ≤ (∫ ω, (S ω) ^ 4 ∂μ) * (μ {ω | (1:ℝ) / 2 < |S ω|}).toReal := by
-  have hWm : AEStronglyMeasurable (fun ω => (S ω) ^ 2) μ := (hSmeas.pow_const 2).aestronglyMeasurable
-  set E : Set Ω := {ω | 1 / 4 < (S ω) ^ 2} with hE
-  have hEm : MeasurableSet E := measurableSet_lt measurable_const (hSmeas.pow_const 2)
-  -- The tail piece `S² · 1_E` is integrable, dominated by `S²`.
-  have hIntTail : Integrable (fun ω => (S ω) ^ 2 * Set.indicator E 1 ω) μ := by
-    apply hS2.mono' _ _
-    · exact hWm.mul (measurable_one.indicator hEm).aestronglyMeasurable
-    · filter_upwards with ω
-      by_cases h : ω ∈ E
-      · rw [Set.indicator_of_mem h]; simp
-      · have hz : (S ω) ^ 2 * Set.indicator E (1 : Ω → ℝ) ω = 0 := by
-          rw [Set.indicator_of_notMem h, mul_zero]
-        rw [hz]; exact (by simp : ‖(0 : ℝ)‖ ≤ 0).trans (sq_nonneg _)
-  -- Split `E[S²] ≤ 1/4 + E[S² · 1_E]`.
-  have hsplit : ∫ ω, (S ω) ^ 2 ∂μ ≤ 1 / 4 +
-      ∫ ω, (S ω) ^ 2 * Set.indicator E 1 ω ∂μ := by
-    have hpoint : ∀ ω, (S ω) ^ 2 ≤ 1 / 4 + (S ω) ^ 2 * Set.indicator E 1 ω := by
-      intro ω
-      by_cases h : ω ∈ E
-      · rw [Set.indicator_of_mem h]
-        simp only [Pi.one_apply, mul_one]
-        linarith
-      · rw [Set.indicator_of_notMem h]
-        simp only [mul_zero, add_zero]
-        have hle : (S ω) ^ 2 ≤ 1 / 4 := by
-          rw [hE] at h
-          simp only [Set.mem_ofPred_eq, not_lt] at h
-          exact h
-        exact hle
-    calc ∫ ω, (S ω) ^ 2 ∂μ
-        ≤ ∫ ω, (1 / 4 + (S ω) ^ 2 * Set.indicator E 1 ω) ∂μ :=
-          integral_mono_ae hS2 ((integrable_const (1/4)).add hIntTail)
-            (Filter.Eventually.of_forall hpoint)
-      _ = 1 / 4 + ∫ ω, (S ω) ^ 2 * Set.indicator E 1 ω ∂μ := by
-          rw [integral_add (integrable_const (1/4)) hIntTail]; simp
-  -- Cauchy–Schwarz (Hölder with `p = q = 2`) on the tail piece.
-  have hMemLp1 : MemLp (fun ω => (S ω) ^ 2) (ENNReal.ofReal 2) μ := by
-    rw [ENNReal.ofReal_ofNat]
-    exact (memLp_two_iff_integrable_sq hWm).mpr
-      (hS4.congr (Filter.Eventually.of_forall fun ω => by ring))
-  have hMemLp2 : MemLp (Set.indicator E (1 : Ω → ℝ)) (ENNReal.ofReal 2) μ :=
-    (memLp_const 1).indicator hEm.nullMeasurableSet
-  have hCS := integral_mul_le_Lp_mul_Lq_of_nonneg (p := 2) (q := 2)
-    (by exact Real.HolderConjugate.two_two)
-    (Filter.Eventually.of_forall fun ω => sq_nonneg _)
-    (Filter.Eventually.of_forall fun ω => by
-      simp only [Set.indicator_apply, Pi.one_apply]
-      split_ifs <;> norm_num) hMemLp1 hMemLp2
-  have hIndSq : ∀ ω, (Set.indicator E (1 : Ω → ℝ) ω) ^ (2 : ℝ) = Set.indicator E (1 : Ω → ℝ) ω := by
-    intro ω
-    by_cases h : ω ∈ E
-    · have h1 : Set.indicator E (1 : Ω → ℝ) ω = (1 : ℝ) := Set.indicator_of_mem h _
-      rw [h1]; exact Real.one_rpow _
-    · have h0 : Set.indicator E (1 : Ω → ℝ) ω = (0 : ℝ) := Set.indicator_of_notMem h _
-      rw [h0]; exact Real.zero_rpow (by norm_num)
-  have hcongr : (fun ω => (Set.indicator E (1 : Ω → ℝ) ω) ^ (2 : ℝ)) =ᵐ[μ] (Set.indicator E (1 : Ω → ℝ)) :=
-    Filter.Eventually.of_forall fun ω => hIndSq ω
-  rw [integral_congr_ae hcongr] at hCS
-  have hIntInd : ∫ ω, Set.indicator E (1 : Ω → ℝ) ω ∂μ = (μ E).toReal := by
-    rw [integral_indicator_one hEm, Measure.real_def]
-  rw [hIntInd] at hCS
-  have hset : E = {ω | (1:ℝ) / 2 < |S ω|} := by
+  let m := ∫ ω, (S ω) ^ 2 ∂μ
+  have hm : 0 < m := by
+    dsimp [m]
+    linarith [hv, hvS]
+  have hZ2 : MemLp (fun ω => (S ω) ^ 2) 2 μ :=
+    (memLp_two_iff_integrable_sq (hSmeas.pow_const 2).aestronglyMeasurable).mpr
+      (hS4.congr (ae_of_all μ fun ω => by ring))
+  have hθ0 : 0 ≤ (1 / 4 : ℝ) / m := div_nonneg (by norm_num) hm.le
+  have hθ1 : (1 / 4 : ℝ) / m ≤ 1 := by
+    apply (div_le_iff₀ hm).mpr
+    simpa only [one_mul] using hv.le.trans hvS
+  have hθm : ((1 / 4 : ℝ) / m) * m = 1 / 4 := div_mul_cancel₀ _ hm.ne'
+  have hPZ := ProbabilityTheory.paley_zygmund (Z := fun ω => (S ω) ^ 2)
+    (θ := (1 / 4 : ℝ) / m) (ae_of_all μ fun ω => sq_nonneg (S ω)) hZ2 hθ0 hθ1
+  change (1 - (1 / 4 : ℝ) / m) ^ 2 * m ^ 2 ≤
+    (∫ ω, ((S ω) ^ 2) ^ 2 ∂μ) *
+      μ.real {ω | ((1 / 4 : ℝ) / m) * m < (S ω) ^ 2} at hPZ
+  have hleft : (1 - (1 / 4 : ℝ) / m) ^ 2 * m ^ 2 = (m - 1 / 4) ^ 2 := by
+    rw [← mul_pow, sub_mul, one_mul, hθm]
+  have hfour : (∫ ω, ((S ω) ^ 2) ^ 2 ∂μ) = ∫ ω, (S ω) ^ 4 ∂μ :=
+    integral_congr_ae (ae_of_all μ fun ω => by ring)
+  have hevent : {ω | (1 / 4 : ℝ) < (S ω) ^ 2} =
+      {ω | (1 / 2 : ℝ) < |S ω|} := by
     ext ω
-    simp only [hE, Set.mem_ofPred_eq]
-    constructor
-    · intro h
-      have h' : (1:ℝ) / 2 < |S ω| := by
-        by_contra hc
-        push Not at hc
-        have hle : (S ω) ^ 2 ≤ (1 / 2) ^ 2 := by
-          rw [sq_le_sq, abs_of_pos (by norm_num : (0:ℝ) < 1 / 2)]
-          exact hc
-        norm_num at hle
-        linarith
-      exact h'
-    · intro h
-      have h' : (1 / 2 : ℝ) ^ 2 < |S ω| ^ 2 := sq_lt_sq' (by linarith [abs_nonneg (S ω)]) h
-      rw [sq_abs] at h'
-      norm_num at h'
-      linarith
-  have hCS' : ∫ ω, (S ω) ^ 2 * Set.indicator E 1 ω ∂μ ≤
-      Real.sqrt ((∫ ω, (S ω) ^ 4 ∂μ) * (μ E).toReal) := by
-    have h4eq : (∫ ω, ((S ω) ^ 2) ^ (2 : ℝ) ∂μ) = ∫ ω, (S ω) ^ 4 ∂μ :=
-      integral_congr_ae (Filter.Eventually.of_forall fun ω => by
-        show ((S ω) ^ 2) ^ (((2 : ℕ) : ℝ)) = (S ω) ^ 4
-        rw [Real.rpow_natCast]; ring)
-    rw [h4eq] at hCS
-    rw [← Real.sqrt_eq_rpow, ← Real.sqrt_eq_rpow, ← Real.sqrt_mul
-      (integral_nonneg fun ω => by positivity)] at hCS
-    exact hCS
-  have hkey : (∫ ω, (S ω) ^ 2 ∂μ) - 1 / 4 ≤
-      Real.sqrt ((∫ ω, (S ω) ^ 4 ∂μ) * (μ E).toReal) := by linarith [hsplit, hCS']
-  have hnonneg : 0 ≤ (∫ ω, (S ω) ^ 2 ∂μ) - 1 / 4 := by linarith [hvS, hv]
-  have hsq : ((∫ ω, (S ω) ^ 2 ∂μ) - 1 / 4) ^ 2 ≤ (∫ ω, (S ω) ^ 4 ∂μ) * (μ E).toReal := by
-    calc ((∫ ω, (S ω) ^ 2 ∂μ) - 1 / 4) ^ 2
-        ≤ (Real.sqrt ((∫ ω, (S ω) ^ 4 ∂μ) * (μ E).toReal)) ^ 2 :=
-          pow_le_pow_left₀ hnonneg hkey 2
-      _ = (∫ ω, (S ω) ^ 4 ∂μ) * (μ E).toReal := Real.sq_sqrt (by positivity)
-  have hmono : (v - 1 / 4) ^ 2 ≤ ((∫ ω, (S ω) ^ 2 ∂μ) - 1 / 4) ^ 2 :=
-    pow_le_pow_left₀ (by linarith) (by linarith) 2
-  rw [hset] at hsq
-  exact hmono.trans hsq
+    change (1 / 4 : ℝ) < (S ω) ^ 2 ↔ (1 / 2 : ℝ) < |S ω|
+    rw [show (1 / 4 : ℝ) = (1 / 2) ^ 2 by norm_num, sq_lt_sq,
+      abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)]
+  rw [hleft, hθm, hfour, hevent] at hPZ
+  have hmono : (v - 1 / 4) ^ 2 ≤ (m - 1 / 4) ^ 2 :=
+    pow_le_pow_left₀ (sub_nonneg.mpr hv.le) (sub_le_sub_right hvS _) 2
+  exact hmono.trans hPZ
+
 
 
 theorem integrable_of_measurable_abs_le {f : Ω → ℝ} (hf : Measurable f) {C : ℝ}
@@ -1272,123 +1156,6 @@ theorem tendsto_sum_integral_of_bounded_ae_tendsto {Y : ℕ → Ω → ℝ}
     (tendsto_add_atTop_iff_nat 1).mp hM'
   exact ⟨S ω₀ - c, hMfin⟩
 
-omit [IsProbabilityMeasure μ] in
-/-- **Private reproduction of batch 36's `summable_tail_prob_of_ae_tendsto`.**
-Kept `private` for rebase unification: the assembly below needs series (1),
-which batch 36 already ported as
-`ProbabilityTheory.summable_tail_prob_of_ae_tendsto` in
-`MathlibExt/Probability/ThreeSeriesTailProb.lean`. On rebase, delete this
-copy and use batch 36's theorem. Proof copied verbatim from batch 36. -/
-private theorem summable_tail_prob_of_ae_tendsto
-    {X : ℕ → Ω → ℝ} (hX_meas : ∀ n, Measurable (X n))
-    (hX_indep : iIndepFun X μ) {A : ℝ} (hA : A > 0)
-    (hX_tend : ∃ S : Ω → ℝ, ∀ᵐ ω ∂μ, Tendsto (fun n =>
-      (Finset.range n).sum (fun i => X i ω)) atTop (nhds (S ω))) :
-    (∑' n, μ {ω | A < |X n ω|}) < ⊤ := by
-  by_contra h_not_fin
-  push Not at h_not_fin
-  have h_infty : (∑' n, μ {ω | A < |X n ω|}) = ⊤ := top_le_iff.mp h_not_fin
-  have h_meas : ∀ n, MeasurableSet {ω | A < |X n ω|} := fun n =>
-    measurableSet_lt measurable_const (hX_meas n).norm
-  have h_indep : iIndepSet (fun n => {ω | A < |X n ω|}) μ := by
-    rw [iIndepSet_iff_meas_biInter h_meas]
-    intro S
-    have h_eq : ∀ n, {ω : Ω | A < |X n ω|} = X n ⁻¹' {x : ℝ | A < |x|} := by
-      intro n
-      ext ω
-      simp
-    simp_rw [h_eq]
-    exact hX_indep.measure_inter_preimage_eq_mul S
-      (fun _ _ => measurableSet_lt measurable_const measurable_norm)
-  have h_limsup : μ (limsup (fun n => {ω | A < |X n ω|}) atTop) = 1 :=
-    measure_limsup_eq_one h_meas h_indep h_infty
-  obtain ⟨S, hS⟩ := hX_tend
-  have h_term_zero : ∀ᵐ ω ∂μ, Tendsto (fun n => X n ω) atTop (nhds 0) := by
-    filter_upwards [hS] with ω hω
-    have h1 : Tendsto (fun n => (∑ i ∈ Finset.range (n + 1), X i ω) -
-        ∑ i ∈ Finset.range n, X i ω) atTop (nhds (S ω - S ω)) :=
-      (hω.comp (tendsto_add_atTop_nat 1)).sub hω
-    simp only [Finset.sum_range_succ_sub_sum, sub_self] at h1
-    exact h1
-  have h_ev_not_mem : ∀ᵐ ω ∂μ, ∀ᶠ n in atTop, ω ∉ {ω' | A < |X n ω'|} := by
-    filter_upwards [h_term_zero] with ω hω
-    obtain ⟨N, hN⟩ := (Metric.tendsto_atTop.mp hω) A hA
-    exact eventually_atTop.mpr ⟨N, fun n hn => by
-      simp only [not_lt]
-      have hd := hN n hn
-      rw [Real.dist_eq, sub_zero] at hd
-      exact le_of_lt hd⟩
-  have h_ae_not_limsup :
-      ∀ᵐ ω ∂μ, ω ∉ limsup (fun n => {ω | A < |X n ω|}) atTop := by
-    filter_upwards [h_ev_not_mem] with ω hω
-    rw [Filter.limsup_eq_iInf_iSup_of_nat]
-    simp only [Set.iInf_eq_iInter, Set.iSup_eq_iUnion, Set.mem_iInter,
-      Set.mem_iUnion, not_forall, not_exists]
-    obtain ⟨N, hN⟩ := eventually_atTop.mp hω
-    exact ⟨N, fun n hn => hN n (by omega)⟩
-  have h_freq_zero : μ (limsup (fun n => {ω | A < |X n ω|}) atTop) = 0 := by
-    rw [ae_iff] at h_ae_not_limsup
-    simp only [not_not] at h_ae_not_limsup
-    exact h_ae_not_limsup
-  rw [h_freq_zero] at h_limsup
-  exact absurd h_limsup (by norm_num)
-
-omit [IsProbabilityMeasure μ] in
-/-- **Private reproduction of batch 10's `ae_eventually_truncation_eq`.**
-Kept `private` for rebase unification: batch 10 proved it for its
-`truncatedRV` in `MathlibExt/Probability/KolmogorovThreeSeries.lean`.
-If `∑ₙ P{|Xₙ| > A} < ∞`, then by the first Borel–Cantelli lemma, almost
-surely the truncation eventually coincides with `Xₙ`. -/
-private theorem ae_eventually_truncation_eq
-    {X : ℕ → Ω → ℝ} {A : ℝ}
-    (h1 : (∑' n, μ {ω | A < |X n ω|}) < ⊤) :
-    ∀ᵐ ω ∂μ, ∀ᶠ n in atTop, X n ω = truncationRV X A n ω := by
-  have h1' : (∑' n, μ {ω | A < |X n ω|}) ≠ ⊤ := h1.ne
-  have hbc := ae_eventually_notMem h1'
-  filter_upwards [hbc] with ω hω
-  exact hω.mono fun n hn => by
-    have hle : |X n ω| ≤ A := not_lt.mp hn
-    exact (truncationRV_eq_of_abs_le hle).symm
-
-omit [IsProbabilityMeasure μ] in
-/-- **Private reproduction of batch 10's
-`ae_tendsto_of_ae_eventually_eq_and_ae_tendsto`.** Kept `private` for
-rebase unification (batch 10, `MathlibExt/Probability/KolmogorovThreeSeries.lean`).
-If two sequences `f, g` of random variables agree eventually (almost
-surely) and the partial sums of `f` converge almost surely, then the
-partial sums of `g` also converge almost surely (to a possibly different
-limit). Proof copied verbatim from batch 10. -/
-private theorem ae_tendsto_of_ae_eventually_eq_and_ae_tendsto
-    {f g : ℕ → Ω → ℝ}
-    (hfg : ∀ᵐ ω ∂μ, ∀ᶠ n in atTop, f n ω = g n ω)
-    (hf : ∃ S : Ω → ℝ, ∀ᵐ ω ∂μ, Tendsto (fun n =>
-      (Finset.range n).sum (fun i => f i ω)) atTop (nhds (S ω))) :
-    ∃ S : Ω → ℝ, ∀ᵐ ω ∂μ, Tendsto (fun n =>
-      (Finset.range n).sum (fun i => g i ω)) atTop (nhds (S ω)) := by
-  obtain ⟨Sf, hSf⟩ := hf
-  have key : ∀ᵐ ω ∂μ, ∃ L : ℝ, Tendsto (fun n =>
-      ∑ i ∈ Finset.range n, g i ω) atTop (nhds L) := by
-    filter_upwards [hfg, hSf] with ω hev htend
-    obtain ⟨N, hN⟩ := eventually_atTop.mp hev
-    set C := (∑ i ∈ Finset.range N, g i ω) - (∑ i ∈ Finset.range N, f i ω)
-    refine ⟨C + Sf ω, ?_⟩
-    have heq : ∀ n, N ≤ n →
-        (∑ i ∈ Finset.range n, g i ω) = C + (∑ i ∈ Finset.range n, f i ω) := by
-      intro n hn
-      have : ∑ i ∈ Finset.Ico N n, g i ω = ∑ i ∈ Finset.Ico N n, f i ω := by
-        apply Finset.sum_congr rfl
-        intro i hi
-        exact (hN i (Finset.mem_Ico.mp hi).1).symm
-      rw [← Finset.sum_range_add_sum_Ico hn (f := fun i => g i ω),
-          ← Finset.sum_range_add_sum_Ico hn (f := fun i => f i ω)]
-      linarith
-    exact (tendsto_const_nhds.add htend).congr'
-      (eventually_atTop.mpr ⟨N, fun n hn => (heq n hn).symm⟩)
-  classical
-  exact ⟨fun ω => if h : ∃ L, Tendsto (fun n => ∑ i ∈ Finset.range n, g i ω)
-      atTop (nhds L) then h.choose else 0,
-    key.mono fun ω hω => by simp only; rw [dite_eq_left hω]; exact hω.choose_spec⟩
-
 /-- **Kolmogorov three-series necessity, series (2)–(3).** If the partial
 sums of an independent sequence `Xₙ` converge almost surely, then for
 every `A > 0` the truncations `Yₙ = Xₙ · 1_{|Xₙ| ≤ A}` have convergent
@@ -1396,23 +1163,25 @@ mean partial sums and summable variances. This is the corrected form of
 v1's `summable_mean_and_variance_of_ae_tendsto_ax`: v1 claimed the means
 themselves are `Summable`, which is false (see
 `summable_mean_necessity_false`); only convergence of the mean partial
-sums holds. Series (1) is batch 36's theorem, used here through the
-private copy above. -/
+sums holds. Series (1) uses the public theorem from
+`ThreeSeriesTailProb`. -/
 theorem three_series_necessity_mean_variance {X : ℕ → Ω → ℝ}
     (hXmeas : ∀ n, Measurable (X n)) (hXindep : iIndepFun X μ)
     {A : ℝ} (hA : 0 < A)
     (hXtend : ∃ S : Ω → ℝ, ∀ᵐ ω ∂μ, Tendsto (fun n =>
       (Finset.range n).sum (fun i => X i ω)) atTop (nhds (S ω))) :
     (∃ L : ℝ, Tendsto (fun n => ∑ k ∈ Finset.range n,
-      ∫ ω, truncationRV X A k ω ∂μ) atTop (nhds L)) ∧
-    Summable (fun n => variance (truncationRV X A n) μ) := by
-  have h1 := summable_tail_prob_of_ae_tendsto hXmeas hXindep hA hXtend
-  have hEv := ae_eventually_truncation_eq (X := X) (A := A) h1
-  have hYtend := ae_tendsto_of_ae_eventually_eq_and_ae_tendsto hEv hXtend
-  have hYmeas := measurable_truncationRV hXmeas A
-  have hYindep := iIndepFun_truncationRV hXindep A
-  have hYbdd : ∀ n ω, |truncationRV X A n ω| ≤ A := fun n ω =>
-    abs_truncationRV_le hA.le n ω
+      ∫ ω, truncatedRV X A k ω ∂μ) atTop (nhds L)) ∧
+    Summable (fun n => variance (truncatedRV X A n) μ) := by
+  have h1 := ProbabilityTheory.summable_tail_prob_of_ae_tendsto hXmeas hXindep hA hXtend
+  have hEv :=
+    ProbabilityTheory.KolmogorovThreeSeries.ae_eventually_truncation_eq (X := X) (A := A) h1
+  have hYtend :=
+    ProbabilityTheory.KolmogorovThreeSeries.ae_tendsto_of_ae_eventually_eq_and_ae_tendsto hEv hXtend
+  have hYmeas := measurable_truncatedRV hXmeas A
+  have hYindep := iIndepFun_truncatedRV hXindep A
+  have hYbdd : ∀ n ω, |truncatedRV X A n ω| ≤ A := fun n ω =>
+    abs_truncatedRV_le hA.le n ω
   have hVar := summable_variance_of_bounded_ae_tendsto hYmeas hYindep hA hYbdd hYtend
   exact ⟨tendsto_sum_integral_of_bounded_ae_tendsto hYmeas hYindep hYbdd hVar hYtend, hVar⟩
 
@@ -1421,7 +1190,7 @@ deterministic sequence `X k ω = (-1)^k / (k + 1)` on the one-point
 probability space `(Unit, dirac ())` has converging partial sums, is
 constant (hence measurable and independent), agrees with its truncations
 at `A = 1`, and has all variances `0` — yet its means
-`∫ truncationRV X 1 k = (-1)^k / (k + 1)` are not `Summable`, since
+`∫ truncatedRV X 1 k = (-1)^k / (k + 1)` are not `Summable`, since
 `Summable.abs` would force summability of the harmonic series. This is
 why the ported necessity theorem above states convergence of the mean
 partial sums rather than `Summable` of the means. The statement records
@@ -1435,9 +1204,9 @@ theorem summable_mean_necessity_false :
         Tendsto (fun n => (Finset.range n).sum (fun i => X i ω))
           atTop (nhds (S ω))) ∧
       (∃ S : Unit → ℝ, ∀ᵐ ω ∂(Measure.dirac ()),
-        Tendsto (fun n => (Finset.range n).sum (fun i => truncationRV X A i ω))
+        Tendsto (fun n => (Finset.range n).sum (fun i => truncatedRV X A i ω))
           atTop (nhds (S ω))) ∧
-      ¬ Summable (fun n => ∫ ω, truncationRV X A n ω ∂(Measure.dirac ())) := by
+      ¬ Summable (fun n => ∫ ω, truncatedRV X A n ω ∂(Measure.dirac ())) := by
   classical
   refine ⟨fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ), 1, one_pos, fun _ => measurable_const,
     ?_, ?_, ?_, ?_⟩
@@ -1505,13 +1274,14 @@ theorem summable_mean_necessity_false :
     refine ⟨fun _ => l, ?_⟩
     rw [ae_dirac_eq, Filter.eventually_pure]
     have hEq : ∀ n, (Finset.range n).sum (fun i =>
-        truncationRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 i ()) =
+        truncatedRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 i ()) =
         (Finset.range n).sum (fun i => (-1 : ℝ) ^ i * (1 / (i + 1 : ℝ))) := by
       intro n
       apply Finset.sum_congr rfl
       intro i _
-      have htr : truncationRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 i () =
+      have htr : truncatedRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 i () =
           (-1 : ℝ) ^ i / (i + 1 : ℝ) := by
+        rw [truncatedRV_apply]
         show (if |(-1 : ℝ) ^ i / (i + 1 : ℝ)| ≤ 1 then (-1 : ℝ) ^ i / (i + 1 : ℝ)
           else 0) = (-1 : ℝ) ^ i / (i + 1 : ℝ)
         rw [ite_eq_left (by
@@ -1522,10 +1292,11 @@ theorem summable_mean_necessity_false :
       rw [htr, mul_one_div]
     exact hl.congr (fun n => (hEq n).symm)
   · -- The means are the alternating harmonic terms, which are not summable.
-    have hInt : ∀ n, ∫ ω, truncationRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 n ω
+    have hInt : ∀ n, ∫ ω, truncatedRV (fun n _ => (-1 : ℝ) ^ n / (n + 1 : ℝ)) 1 n ω
         ∂(Measure.dirac ()) = (-1 : ℝ) ^ n / (n + 1 : ℝ) := by
       intro n
       rw [MeasureTheory.integral_dirac]
+      rw [truncatedRV_apply]
       show (if |(-1 : ℝ) ^ n / (n + 1 : ℝ)| ≤ 1 then (-1 : ℝ) ^ n / (n + 1 : ℝ)
         else 0) = (-1 : ℝ) ^ n / (n + 1 : ℝ)
       rw [ite_eq_left (by
