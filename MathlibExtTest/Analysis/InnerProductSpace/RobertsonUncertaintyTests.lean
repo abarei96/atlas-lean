@@ -10,6 +10,9 @@ module
 
 public import MathlibExt.Analysis.InnerProductSpace.RobertsonUncertainty
 
+import Mathlib.Analysis.InnerProductSpace.Rayleigh
+import Mathlib.Analysis.InnerProductSpace.PiL2
+
 import Mathlib.Tactic.Abel
 import Mathlib.Tactic.NormNum
 import Mathlib.Tactic.Ring
@@ -215,4 +218,59 @@ example (x : ℂ) (hx : ‖x‖ = 1) : variance (1 : ℂ →L[ℂ] ℂ) x = 0 :=
   rw [variance, centered, hmean]
   simp
 
+
+/-- The concrete two-dimensional Pauli-like pair does not commute. -/
+theorem concrete_pauli_noncommuting :
+    ¬ Commute
+      (pauliLikeX (EuclideanSpace.single (0 : Fin 2) (1 : ℂ))
+        (EuclideanSpace.single (1 : Fin 2) (1 : ℂ)))
+      (pauliLikeY (EuclideanSpace.single (0 : Fin 2) (1 : ℂ))
+        (EuclideanSpace.single (1 : Fin 2) (1 : ℂ))) := by
+  let x : EuclideanSpace ℂ (Fin 2) := EuclideanSpace.single 0 1
+  let y : EuclideanSpace ℂ (Fin 2) := EuclideanSpace.single 1 1
+  have hs := EuclideanSpace.orthonormal_single (𝕜 := ℂ) (ι := Fin 2)
+  have hx : ‖x‖ = 1 := hs.1 0
+  have hy : ‖y‖ = 1 := hs.1 1
+  have hxy : ⟪x, y⟫_ℂ = 0 := by
+    simp [x, y, EuclideanSpace.inner_single_left, EuclideanSpace.single]
+  intro h
+  have hz := commutator_eq_zero_of_commute h
+  have hnorm := norm_commutator_pauliLike hx hy hxy
+  change ‖⟪(pauliLikeX x y ∘L pauliLikeY x y - pauliLikeY x y ∘L pauliLikeX x y) x,
+    x⟫_ℂ‖ = 2 at hnorm
+  change pauliLikeX x y ∘L pauliLikeY x y - pauliLikeY x y ∘L pauliLikeX x y = 0 at hz
+  rw [hz, zero_apply, inner_zero_left, norm_zero] at hnorm
+  norm_num at hnorm
+
+/-- The normalized expectation of identity at a nonunit state is one. -/
+theorem identity_mean_two : meanValue (1 : ℂ →L[ℂ] ℂ) (2 : ℂ) = 1 := by
+  norm_num [meanValue, ContinuousLinearMap.rayleighQuotient,
+    ContinuousLinearMap.reApplyInnerSelf_apply, inner_self_eq_norm_sq_to_K]
+
+/-- Identity has a zero centered vector at a nonunit state. -/
+theorem identity_centered_two : centered (1 : ℂ →L[ℂ] ℂ) (2 : ℂ) = 0 := by
+  norm_num [centered, meanValue, ContinuousLinearMap.rayleighQuotient,
+    ContinuousLinearMap.reApplyInnerSelf_apply, inner_self_eq_norm_sq_to_K]
+
+/-- Identity has zero variance at a nonunit state. -/
+theorem identity_variance_two : variance (1 : ℂ →L[ℂ] ℂ) (2 : ℂ) = 0 := by
+  norm_num [variance, centered, meanValue, ContinuousLinearMap.rayleighQuotient,
+    ContinuousLinearMap.reApplyInnerSelf_apply, inner_self_eq_norm_sq_to_K]
+
+/-- Expectation depends on a ray, with Mathlib's canonical scalar invariance. -/
+theorem mean_ray_invariant (A : E →L[ℂ] E) (x : E) {c : ℂ} (hc : c ≠ 0) :
+    meanValue A (c • x) = meanValue A x := by
+  change A.rayleighQuotient (c • x) = A.rayleighQuotient x
+  exact A.rayleigh_smul x hc
+
+/-- Normalized variance depends on a ray. -/
+theorem variance_ray_invariant (A : E →L[ℂ] E) (x : E) {c : ℂ} (hc : c ≠ 0) :
+    variance A (c • x) = variance A x :=
+  variance_smul A x hc
+
+omit [CompleteSpace E] in
+/-- The totalized quantities at zero are all zero. -/
+theorem zero_quantities (A : E →L[ℂ] E) :
+    meanValue A 0 = 0 ∧ centered A 0 = 0 ∧ variance A 0 = 0 := by
+  simp [meanValue, centered, variance]
 end MathlibExtTest.Analysis.InnerProductSpace.RobertsonUncertaintyTests
