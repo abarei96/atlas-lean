@@ -58,4 +58,35 @@ example : IsRegularlyVarying (fun x => x ^ (-1 : ℝ) * earlyFactor x) (-1) := b
   filter_upwards [eventually_gt_atTop (1 : ℝ)] with x hx
   simp [earlyFactor, not_le.mpr hx]
 
+-- Canonical callers obtain the genuine Potter/Karamata APIs directly.
+example {W : ℝ → ℝ} {ρ : ℝ} (hW : Antitone W) (hWnn : ∀ t, 0 ≤ W t)
+    (hWb : ∃ B, ∀ t, W t ≤ B) (hRV : IsRegularlyVarying W ρ)
+    (hρ : ρ < 0) {δ : ℝ} (hδ : 0 < δ) :
+    ∃ C Y : ℝ, 0 < C ∧ 0 < Y ∧ ∀ x ≥ Y, ∀ u ∈ Set.Ioc 0 1,
+      W (x * u) / W x ≤ C * u ^ (ρ - δ) :=
+  potter_upper hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto hc) hρ hδ
+
+example {W : ℝ → ℝ} {ρ β : ℝ} (hW : Antitone W) (hWnn : ∀ t, 0 ≤ W t)
+    (hWb : ∃ B, ∀ t, W t ≤ B) (hRV : IsRegularlyVarying W ρ)
+    (hρ : ρ < 0) (hβ : 0 ≤ β) (hβρ : 0 < β + 1 + ρ) :
+    Tendsto (fun x => (∫ t in (0 : ℝ)..x, t ^ β * W t) / (x ^ (β + 1) * W x))
+      atTop (𝓝 (1 / (β + 1 + ρ))) :=
+  karamata_integral hW hWnn hWb hRV.eventually_pos (fun c hc => hRV.ratio_tendsto hc)
+    hρ hβ hβρ
+
+-- The primary claim keeps every probability/range/interval/normalization guard.
+example {μ : Measure ℝ} [IsProbabilityMeasure μ] {α : ℝ}
+    (hα : 0 < α) (hα2 : α < 2) (hRV : IsRegularlyVarying (combinedTail μ) (-α)) :
+    Tendsto (fun x => (∫ y in Set.Icc (-x) x, y ^ 2 ∂μ) / (x ^ 2 * combinedTail μ x))
+      atTop (𝓝 (α / (2 - α))) :=
+  truncatedMoment_tendsto hα hα2 hRV
+
+example (μ : Measure ℝ) [IsProbabilityMeasure μ] {s : ℝ} (hs : 0 < s) :
+    tailGe μ s = combinedTail μ s + (μ {s}).toReal + (μ {-s}).toReal :=
+  tailGe_eq_combinedTail_add_atoms μ hs
+
+example (μ : Measure ℝ) [IsFiniteMeasure μ] {s : ℝ} (hs : 0 ≤ s) :
+    tailGt μ s = combinedTail μ s :=
+  tailGt_eq_combinedTail μ hs
+
 end MathlibExtTest.Probability.TruncatedMomentRVCanonical
