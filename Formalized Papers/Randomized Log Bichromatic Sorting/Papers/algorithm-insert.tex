@@ -1,0 +1,45 @@
+% algorithm-insert.tex --- Insert pseudocode for log3_to_log.tex.
+% \input inside an aiblock. Requires from the main file's preamble:
+% the myalgorithm environment, \cR, \cB, \nil, and the
+% algorithm/algorithmic packages.
+\begin{myalgorithm}[\textsc{Insert}($t, r, k, L, U, S$): one red insertion\label{alg:insert}]
+\begin{algorithmic}[1]
+\REQUIRE stage $t-1$ runs; $L, U$ among $C_{t-1,*}$; $S$ among $S_{t-1,*}$ or $\nil$
+\ENSURE stage $t$ runs $C_{t,*}$, $S_{t,*}$, sequence $X_t$
+\IF{$S = \nil$ or $|S| = 1$}
+  \STATE $D \gets \{C_{t-1,0}\}$ if $S = \nil$ and $k = 0$, $\{C_{t-1,q_{t-1}-1}\}$ if $S = \nil$, else $\mathcal N(S)$ \COMMENT{Cases A+B}
+  \STATE scan $D$ by nondecreasing size; stop at first mixed run
+  \IF{a scanned run $C_{t-1,j}$ is mixed}
+    \STATE \textsc{Splice}($t, j, r$) \COMMENT{no red--red test}
+  \ELSE
+    \IF{$S = \nil$}
+      \STATE create red singleton $\{r\}$ outside the scanned run
+    \ELSE
+      \STATE write $S = \{r_0\}$; compare $r$ with $r_0$; merge in order; activate $S$
+    \ENDIF
+  \ENDIF
+\ELSE
+  \STATE $a \gets \min S$; $z \gets \max S$; compare $r$ with $a$ \COMMENT{Case C: $S$ activated}
+  \IF{$r > a$}
+    \STATE compare $r$ with $z$
+  \ENDIF
+  \IF{$a < r < z$}
+    \STATE insert $r$ into sorted $S$ by binary search \COMMENT{no scan}
+  \ELSE
+    \STATE let $C_{t-1,j}$ be the blue run on $r$'s side of $S$, or none
+    \IF{none exists}
+      \STATE attach $r$ to that end of $S$
+    \ELSE
+      \STATE scan $C_{t-1,j}$
+      \IF{mixed}
+        \STATE \textsc{Splice}($t, j, r$)
+      \ELSE
+        \STATE attach $r$ to that end of $S$
+      \ENDIF
+    \ENDIF
+  \ENDIF
+\ENDIF
+\STATE re-enumerate red runs left to right as $S_{t,0}, \dots$
+\STATE assemble $X_t$ by interleaving $C_{t,*}$ and $S_{t,*}$ in value order
+\end{algorithmic}
+\end{myalgorithm}

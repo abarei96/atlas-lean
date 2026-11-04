@@ -1,0 +1,22 @@
+% algorithm-splicesort.tex --- SpliceSort pseudocode for log3_to_log.tex.
+% \input inside an aiblock. Requires from the main file's preamble:
+% the myalgorithm environment, \cR, \cB, \nil, and the
+% algorithm/algorithmic packages.
+\begin{myalgorithm}[\textsc{SpliceSort}($\cR$, $\cB$): randomized bichromatic sort\label{alg:SpliceSort}]
+\begin{algorithmic}[1]
+\REQUIRE disjoint red elements $\cR$ and blue elements $\cB$ with distinct keys; $n = \#\cR$
+\ENSURE keys of $\cR \cup \cB$ in increasing order
+\STATE draw a uniform random permutation $\tau:\cR\longrightarrow\{1,2,\dots,\#\cR\}$; $\tau(r)$ becomes the {\em arrival rank} of $r$
+\STATE $C_{0,0} \gets \cB$; $\rho(C_{0,0}) \gets $ any $b \in \cB$; $X_0 \gets [\,C_{0,0}\,]$
+\FOR{$t = 1$ \TO $n$}
+  \STATE $r \gets $ the red element with $\tau(r) = t$
+  \STATE $k \gets \min\{j : \rho(C_{t-1,j}) > r\}$, or $q_{t-1}$ if none
+  \COMMENT{mixed-only binary search over representatives}
+  \STATE $L \gets C_{t-1,k-1}$ if $k > 0$; $U \gets C_{t-1,k}$ if $k < q_{t-1}$
+  \STATE $S \gets$ red run between $L$ and $U$; at an end, the red neighbor if one exists; else $\nil$
+  \STATE \textsc{Insert}($t, r, k, L, U, S$)
+\ENDFOR
+\STATE {\ttfamily MergeSort} every $C_{n,j}$; output $X_n$ flattened
+\COMMENT{activated red elements already sorted; singletons trivial}
+\end{algorithmic}
+\end{myalgorithm}

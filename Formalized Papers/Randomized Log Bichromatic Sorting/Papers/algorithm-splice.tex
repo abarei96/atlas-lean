@@ -1,0 +1,15 @@
+% algorithm-splice.tex --- Splice pseudocode for log3_to_log.tex.
+% \input inside an aiblock. Requires from the main file's preamble:
+% the myalgorithm environment, \cR, \cB, \nil, and the
+% algorithm/algorithmic packages.
+\begin{myalgorithm}[\textsc{Splice}($t, j, r$): split $C_{t-1,j}$ around $r$\label{alg:splice}]
+\begin{algorithmic}[1]
+\REQUIRE mixed scan of $C_{t-1,j}$ done: some key below $r$, some above
+\ENSURE pieces spliced into stage $t$ numbering; $q_t = q_{t-1} + 1$
+\STATE $A \gets \{b \in C_{t-1,j} : b < r\}$; $B \gets \{b \in C_{t-1,j} : b > r\}$
+\STATE $C_{t,j} \gets A$; fresh red singleton $\{r\}$; $C_{t,j+1} \gets B$
+\COMMENT{$\rho$ arbitrary in each piece}
+\STATE $C_{t,i} \gets C_{t-1,i}$ for $i < j$; $C_{t,i+1} \gets C_{t-1,i}$ for $i > j$
+\STATE $q_t \gets q_{t-1} + 1$
+\end{algorithmic}
+\end{myalgorithm}

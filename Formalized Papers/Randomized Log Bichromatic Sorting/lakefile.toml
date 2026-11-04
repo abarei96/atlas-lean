@@ -1,0 +1,16 @@
+name = "randomized-log-bichromatic-sorting"
+version = "0.1.0"
+defaultTargets = ["RandomizedLog"]
+
+[leanOptions]
+autoImplicit = false
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.35.0"
+
+[[lean_lib]]
+name = "RandomizedLog"
+srcDir = "Formalization"
+globs = ["RandomizedLog", "RandomizedLog.+"]
